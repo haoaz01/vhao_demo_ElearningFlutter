@@ -17,9 +17,12 @@ class QuizDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (quizController.chapters.isEmpty) {
-      quizController.loadQuiz(subject, grade);
-    }
+    // Load quiz khi screen được khởi tạo
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (quizController.chapters.isEmpty) {
+        quizController.loadQuiz(subject, grade);
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -30,14 +33,27 @@ class QuizDetailScreen extends StatelessWidget {
         backgroundColor: Colors.green.shade600,
       ),
       body: Obx(() {
-        if (quizController.chapters.isEmpty) {
+        if (quizController.isLoading.value) {
           return const Center(child: CircularProgressIndicator());
         }
 
+        if (quizController.chapters.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text("Không có quiz nào"),
+                ElevatedButton(
+                  onPressed: () => quizController.loadQuiz(subject, grade),
+                  child: const Text("Thử lại"),
+                )
+              ],
+            ),
+          );
+        }
+
         return RefreshIndicator(
-          onRefresh: () async {
-            await quizController.loadQuiz(subject, grade);
-          },
+          onRefresh: () async => await quizController.loadQuiz(subject, grade),
           child: ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: quizController.chapters.length,
@@ -72,7 +88,6 @@ class QuizDetailScreen extends StatelessWidget {
                           final score = quizController.getScore(chapter["chapter"], quizSet["title"]);
                           final correct = quizController.getCorrectAnswers(chapter["chapter"], quizSet["title"]);
                           final totalQuestions = quizSet["questions"].length;
-
                           final isCompleted = quizController.isCompleted(chapter["chapter"], quizSet["title"]);
 
                           return Card(
@@ -124,8 +139,6 @@ class QuizDetailScreen extends StatelessWidget {
                                             'isReview': isCompleted,
                                           },
                                         );
-
-                                        /// 🔹 Sau khi pop từ quiz_screen => refresh lại dữ liệu
                                         await quizController.loadQuiz(subject, grade);
                                         quizController.update();
                                       },

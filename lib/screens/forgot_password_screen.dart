@@ -1,27 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_elearning_application/app/routes/app_routes.dart';
 import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
 
-class LoginScreen extends StatelessWidget {
-  final GlobalKey<FormState> _formkeyLogin = GlobalKey<FormState>();
+class ForgotPasswordScreen extends StatelessWidget {
+  final GlobalKey<FormState> _formkeyForgotPassword = GlobalKey<FormState>();
   final AuthController authController = Get.find<AuthController>();
+  final TextEditingController emailController = TextEditingController();
 
-  LoginScreen({super.key});
+  ForgotPasswordScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Nhận thông tin từ arguments nếu có (sau khi đăng ký hoặc logout)
-    final arguments = Get.arguments;
-    if (arguments != null && arguments is Map<String, dynamic>) {
-      if (arguments['email'] != null) {
-        authController.emailController.text = arguments['email'];
-      }
-      if (arguments['password'] != null) {
-        authController.passwordController.text = arguments['password'];
-      }
-    }
-
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: Colors.white,
@@ -39,7 +28,7 @@ class LoginScreen extends StatelessWidget {
         height: MediaQuery.of(context).size.height,
         width: double.infinity,
         child: Form(
-          key: _formkeyLogin,
+          key: _formkeyForgotPassword,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -52,10 +41,22 @@ class LoginScreen extends StatelessWidget {
                       const Column(
                         children: [
                           Text(
-                            "Đăng Nhập",
+                            "Quên mật khẩu",
                             style: TextStyle(
                               fontSize: 30,
                               fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 10),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 40),
+                            child: Text(
+                              "Vui lòng nhập email của bạn để nhận liên kết đặt lại mật khẩu",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey,
+                              ),
                             ),
                           ),
                         ],
@@ -64,13 +65,15 @@ class LoginScreen extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 40),
                         child: TextFormField(
-                          controller: authController.emailController,
+                          controller: emailController,
                           keyboardType: TextInputType.emailAddress,
-                          decoration: InputDecoration(
+                          decoration: const InputDecoration(
                             labelText: "Email",
-                            prefixIcon: const Icon(Icons.email),
+                            prefixIcon: Icon(Icons.email),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(15),
+                              ),
                             ),
                           ),
                           validator: (value) {
@@ -78,61 +81,8 @@ class LoginScreen extends StatelessWidget {
                           },
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 40),
-                        child: Obx(
-                              () => TextFormField(
-                            controller: authController.passwordController,
-                            obscureText: !authController.isPasswordVisible.value,
-                            decoration: InputDecoration(
-                              labelText: "Password",
-                              prefixIcon: const Icon(Icons.lock),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                              suffixIcon: IconButton(
-                                onPressed: () {
-                                  authController.isPasswordVisible.value =
-                                  !authController.isPasswordVisible.value;
-                                },
-                                icon: Icon(
-                                  authController.isPasswordVisible.value
-                                      ? Icons.visibility
-                                      : Icons.visibility_off,
-                                ),
-                              ),
-                            ),
-                            validator: (value) {
-                              return authController.validatePassword(value);
-                            },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Padding(
-                        padding: const EdgeInsets.only(right: 40),
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: GestureDetector(
-                            onTap: () {
-                              Get.toNamed(AppRoutes.forgotPassword);
-                            },
-                            child: const Text(
-                              "Quên mật khẩu?",
-                              style: TextStyle(
-                                color: Colors.blue,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
                       const SizedBox(height: 30),
-                      Obx(() => authController.isLoading.value
-                          ? const CircularProgressIndicator()
-                          : Padding(
+                      Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 40),
                         child: Container(
                           padding: const EdgeInsets.only(top: 3, left: 3),
@@ -144,8 +94,11 @@ class LoginScreen extends StatelessWidget {
                             minWidth: double.infinity,
                             height: 60,
                             onPressed: () {
-                              if (_formkeyLogin.currentState!.validate()) {
-                                authController.loginUser(_formkeyLogin);
+                              if (_formkeyForgotPassword.currentState!
+                                  .validate()) {
+                                authController.forgotPassword(
+                                  emailController.text.trim(),
+                                );
                               }
                             },
                             color: Colors.green,
@@ -154,7 +107,7 @@ class LoginScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(50),
                             ),
                             child: const Text(
-                              "Đăng nhập",
+                              "Gửi yêu cầu",
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 18,
@@ -164,21 +117,17 @@ class LoginScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                      ),
                       const SizedBox(height: 20),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text("Bạn chưa có tài khoản "),
+                          const Text("Quay lại "),
                           GestureDetector(
                             onTap: () {
-                              authController.usernameController.clear();
-                              authController.emailController.clear();
-                              authController.passwordController.clear();
-                              Get.toNamed(AppRoutes.signup);
+                              Get.toNamed('/login');
                             },
                             child: const Text(
-                              "Đăng Ký",
+                              "Đăng Nhập",
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 18,

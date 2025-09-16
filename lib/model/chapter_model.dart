@@ -23,4 +23,13 @@ class Chapter {
       lessons: lessonsList.map((lessonJson) => Lesson.fromJson(lessonJson)).toList(),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'orderNo': orderNo,
+      'lessons': lessons.map((lesson) => lesson.toJson()).toList(),
+    };
+  }
 }

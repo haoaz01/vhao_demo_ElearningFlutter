@@ -4,10 +4,10 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:io';
 
 import '../model/chapter_model.dart';
-import '../repositories/theory_repository.dart';
+import '../repositories/subject_repository.dart';
 
 class TheoryController extends GetxController {
-  final TheoryRepository repository = TheoryRepository();
+  final SubjectRepository repository = SubjectRepository();
   final RxBool isLoading = false.obs;
   final RxList<Chapter> chapters = <Chapter>[].obs;
   final RxMap<String, Set<String>> completedLessonsBySubject = <String, Set<String>>{}.obs;

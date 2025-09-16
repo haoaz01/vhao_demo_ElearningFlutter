@@ -5,10 +5,10 @@ import '../controllers/pdf_controller.dart';
 
 class PracticeExamDetailScreen extends StatelessWidget {
   final String fileName;
-  final PdfController controller;
+  final PdfController pdfController;
 
   PracticeExamDetailScreen({Key? key, required this.fileName})
-      : controller = Get.put(PdfController(fileName)),
+      : pdfController = Get.put(PdfController(fileName)),
         super(key: key);
 
   @override
@@ -27,27 +27,27 @@ class PracticeExamDetailScreen extends StatelessWidget {
         ],
       ),
       body: Obx(() {
-        if (controller.isLoading.value) {
+        if (pdfController.isLoading.value) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (controller.errorMessage.isNotEmpty) {
+        if (pdfController.errorMessage.isNotEmpty) {
           return Center(
             child: Text(
-              controller.errorMessage.value,
+              pdfController.errorMessage.value,
               style: const TextStyle(color: Colors.red),
             ),
           );
         }
 
-        if (controller.pdfBytes.value.isEmpty) {
+        if (pdfController.pdfBytes.value.isEmpty) {
           return const Center(
             child: Text("Không thể tải tệp PDF"),
           );
         }
 
         return SfPdfViewer.memory(
-          controller.pdfBytes.value,
+          pdfController.pdfBytes.value,
           canShowScrollHead: true,
           canShowScrollStatus: true,
         );

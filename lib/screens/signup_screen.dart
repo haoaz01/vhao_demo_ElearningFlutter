@@ -23,7 +23,7 @@ class SignupScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_ios, size: 20, color: Colors.black),
         ),
       ),
-      body: Container(
+      body: SizedBox(
         height: MediaQuery.of(context).size.height,
         width: double.infinity,
         child: Form(
@@ -58,7 +58,9 @@ class SignupScreen extends StatelessWidget {
                             labelText: "Email",
                             prefixIcon: Icon(Icons.email),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.all(Radius.circular(15)),
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(15),
+                              ),
                             ),
                           ),
                           validator: (value) {
@@ -75,7 +77,9 @@ class SignupScreen extends StatelessWidget {
                             labelText: "Username",
                             prefixIcon: Icon(Icons.person),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.all(Radius.circular(15)),
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(15),
+                              ),
                             ),
                           ),
                           validator: (value) {
@@ -86,31 +90,33 @@ class SignupScreen extends StatelessWidget {
                       const SizedBox(height: 20),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 40),
-                        child: Obx(() => TextFormField(
-                          controller: authController.passwordController,
-                          obscureText: authController.isPasswordVisible.value,
-                          decoration: InputDecoration(
-                            labelText: "Password",
-                            prefixIcon: const Icon(Icons.lock),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            suffixIcon: IconButton(
-                              onPressed: () {
-                                authController.isPasswordVisible.value =
-                                !authController.isPasswordVisible.value;
-                              },
-                              icon: Icon(
-                                authController.isPasswordVisible.value
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
+                        child: Obx(
+                              () => TextFormField(
+                            controller: authController.passwordController,
+                            obscureText: authController.isPasswordVisible.value,
+                            decoration: InputDecoration(
+                              labelText: "Password",
+                              prefixIcon: const Icon(Icons.lock),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              suffixIcon: IconButton(
+                                onPressed: () {
+                                  authController.isPasswordVisible.value =
+                                  !authController.isPasswordVisible.value;
+                                },
+                                icon: Icon(
+                                  authController.isPasswordVisible.value
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                ),
                               ),
                             ),
+                            validator: (value) {
+                              return authController.validatePassword(value);
+                            },
                           ),
-                          validator: (value) {
-                            return authController.validatePassword(value);
-                          },
-                        )),
+                        ),
                       ),
                       const SizedBox(height: 30),
                       Padding(
@@ -171,7 +177,7 @@ class SignupScreen extends StatelessWidget {
                         height: 200,
                         decoration: const BoxDecoration(
                           image: DecorationImage(
-                            image: AssetImage("assets/img_4.png"),
+                            image: AssetImage("assets/images/img_4.png"),
                             fit: BoxFit.fitHeight,
                           ),
                         ),

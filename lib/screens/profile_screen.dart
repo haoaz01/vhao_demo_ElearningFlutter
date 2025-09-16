@@ -1,9 +1,40 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 import '../controllers/auth_controller.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
+  @override
+  _ProfileScreenState createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
   final AuthController authController = Get.find<AuthController>();
+  File? _image;
+  final ImagePicker _picker = ImagePicker();
+
+  // Chọn ảnh từ camera
+  Future<void> _pickImageFromCamera() async {
+    final XFile? pickedFile =
+    await _picker.pickImage(source: ImageSource.camera);
+    if (pickedFile != null) {
+      setState(() {
+        _image = File(pickedFile.path);
+      });
+    }
+  }
+
+  // Chọn ảnh từ thư viện
+  Future<void> _pickImageFromGallery() async {
+    final XFile? pickedFile =
+    await _picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _image = File(pickedFile.path);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,15 +48,56 @@ class ProfileScreen extends StatelessWidget {
               Center(
                 child: Column(
                   children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Colors.blue,
-                      child: Text(
-                        authController.username.value.isNotEmpty
-                            ? authController.username.value[0].toUpperCase()
-                            : "U",
-                        style: const TextStyle(fontSize: 40, color: Colors.white),
-                      ),
+                    SizedBox(height: 100),
+                    Stack(
+                      children: [
+                        InkWell(
+                          onTap: () {
+                            showModalBottomSheet(
+                              context: context,
+                              builder: (context) => Wrap(
+                                children: [
+                                  ListTile(
+                                    leading: Icon(Icons.camera_alt),
+                                    title: Text("Chụp ảnh"),
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      _pickImageFromCamera();
+                                    },
+                                  ),
+                                  ListTile(
+                                    leading: Icon(Icons.photo_library),
+                                    title: Text("Chọn từ thư viện"),
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      _pickImageFromGallery();
+                                    },
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          child: CircleAvatar(
+                            radius: 50,
+                            backgroundImage: _image != null
+                                ? FileImage(_image!) as ImageProvider
+                                : AssetImage("assets/images/default_avatar.png"),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: CircleAvatar(
+                            radius: 16,
+                            backgroundColor: Colors.blue,
+                            child: Icon(
+                              Icons.camera_alt,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -70,7 +142,7 @@ class ProfileScreen extends StatelessWidget {
                     ListTile(
                       leading: const Icon(Icons.phone, color: Colors.green),
                       title: const Text("Phone"),
-                      subtitle: const Text("+84 123 456 789"), // Có thể thêm field phone sau
+                      subtitle: const Text("+84 123 456 789"),
                     ),
                     const Divider(height: 1),
                     ListTile(

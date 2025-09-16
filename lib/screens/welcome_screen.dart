@@ -21,7 +21,7 @@ class WelcomeScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset('assets/img_4.png', height: 250),
+            Image.asset('assets/images/img_4.png', height: 250),
             const SizedBox(height: 40),
             const Text(
               'Create your own study plan',

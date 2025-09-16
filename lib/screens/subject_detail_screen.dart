@@ -10,7 +10,7 @@ class SubjectDetailScreen extends StatelessWidget {
   final Color primaryGreen = const Color(0xFF4CAF50);
   final int grade;
   final String subject;
-  final TheoryController controller = Get.put(TheoryController());
+  final TheoryController theoryController = Get.put(TheoryController());
   final QuizController quizController = Get.put(QuizController());
 
   SubjectDetailScreen({
@@ -23,7 +23,7 @@ class SubjectDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Load dữ liệu lý thuyết cho môn + khối
-    controller.loadTheory(subject, grade);
+    theoryController.loadTheory(subject, grade);
 
     final List<Map<String, dynamic>> featureCards = [
       {
@@ -36,6 +36,7 @@ class SubjectDetailScreen extends StatelessWidget {
             arguments: {
               'subject': subject,
               'grade': grade,
+              'mode': 'theory', // Thêm mode để phân biệt
             },
           );
         }
@@ -45,22 +46,40 @@ class SubjectDetailScreen extends StatelessWidget {
         "icon": Icons.edit_document,
         "color": Colors.green,
         "onTap": () {
-          // TODO: Mở trang giải bài tập sau
+          Get.toNamed(
+            AppRoutes.theory,
+            arguments: {
+              'subject': subject,
+              'grade': grade,
+              'mode': 'exercise', // Thêm mode để phân biệt
+            },
+          );
         }
       },
+// In your original screen where the Quiz card is
       {
         "title": "Quiz",
         "icon": Icons.quiz_rounded,
         "color": Colors.orange,
         "onTap": () async {
-          await quizController.loadQuiz(subject, grade);
-          Get.toNamed(
-            AppRoutes.quizDetail,
-            arguments: {
-              'subject': subject,
-              'grade': grade,
-            },
-          );
+          try {
+            await quizController.loadQuiz(subject, grade);
+
+            if (quizController.chapters.isEmpty) {
+              Get.snackbar("Thông báo", "Không có quiz nào cho môn học này");
+              return;
+            }
+
+            Get.toNamed(
+              AppRoutes.quizDetail,
+              arguments: {
+                'subject': subject,
+                'grade': grade,
+              },
+            );
+          } catch (e) {
+            Get.snackbar("Lỗi", "Không thể tải quiz: $e");
+          }
         }
       },
       {
@@ -76,7 +95,7 @@ class SubjectDetailScreen extends StatelessWidget {
                 () => PracticeExamScreen(
               subject: subject,
               grade: grade.toString(),
-              controller: controller,
+              practiceExamController: controller,
             ),
             transition: Transition.rightToLeft,
           );
@@ -173,7 +192,7 @@ class SubjectDetailScreen extends StatelessWidget {
                             if (card["title"] == "Lý thuyết") ...[
                               const SizedBox(height: 12),
                               Obx(() {
-                                double progress = controller.getProgress(subject, grade);
+                                double progress = theoryController.getProgress(subject, grade);
                                 return Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [

@@ -1,10 +1,10 @@
 import 'package:get/get.dart';
 import 'package:dio/dio.dart';
-import '../model/pdffile_model.dart';
+import '../model/practice_exam_model.dart';
 
 class PracticeExamController extends GetxController {
   final Dio _dio = Dio();
-  final RxList<PdfFile> exams = <PdfFile>[].obs;
+  final RxList<PracticeExam> exams = <PracticeExam>[].obs;
   final RxBool isLoading = true.obs;
   final RxString errorMessage = ''.obs;
 
@@ -13,35 +13,25 @@ class PracticeExamController extends GetxController {
     errorMessage.value = '';
 
     try {
-      // Convert subject name to API format
       String formattedSubject = _convertSubjectToApiFormat(subject);
-
       String url = 'http://192.168.0.144:8080/api/pdf/list?subject=$formattedSubject&grade=$grade';
+
       if (examType != null) {
         url += '&examType=$examType';
       }
 
-      print('Loading exams from: $url');
-
       final response = await _dio.get(url);
 
       if (response.statusCode == 200) {
-        // Make sure the response data is a List
-        if (response.data is List) {
-          exams.value = (response.data as List)
-              .map((item) => PdfFile.fromJson(item))
-              .toList();
-          print('Loaded ${exams.length} exams');
-        } else {
-          errorMessage.value = 'Định dạng dữ liệu không hợp lệ';
-        }
+        exams.value = (response.data as List)
+            .map((item) => PracticeExam.fromJson(item))
+            .toList();
       } else {
-        errorMessage.value = 'Không thể tải danh sách đề thi: ${response.statusCode}';
+        errorMessage.value = 'Failed to load exams: ${response.statusCode}';
       }
     } catch (e) {
-      errorMessage.value = 'Lỗi khi tải danh sách đề thi: $e';
-      // Print the error for debugging
-      print('Error loading exams: $e');
+      errorMessage.value = 'Error loading exams: $e';
+      print('Error details: $e');
     } finally {
       isLoading.value = false;
     }

@@ -1,4 +1,3 @@
-
 import 'chapter_model.dart';
 
 class Subject {
@@ -25,5 +24,15 @@ class Subject {
       grade: json['grade'] ?? 0,
       chapters: chaptersJson.map((e) => Chapter.fromJson(e)).toList(),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'code': code,
+      'name': name,
+      'grade': grade,
+      'chapters': chapters.map((e) => e.toJson()).toList(),
+    };
   }
 }

@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:get/get.dart';
 import '../controllers/quiz_controller.dart';
-import '../widgets/inline_latex_text.dart';
+import '../model/question_model.dart';
+import 'quiz_result_screen.dart';
+import '../widgets/inline_latex_text.dart'; // Import the Question model
 
 class QuizScreen extends StatefulWidget {
   const QuizScreen({Key? key}) : super(key: key);
@@ -17,10 +18,10 @@ class _QuizScreenState extends State<QuizScreen> {
 
   late String chapterName;
   late String setTitle;
-  late List<dynamic> questions;
+  late List<Question> questions;
 
   int currentQuestion = 0;
-  Map<int, int> selectedAnswers = {}; // questionIndex -> selectedOptionIndex
+  Map<int, int> selectedAnswers = {};
   bool isSubmitted = false;
 
   late int remainingSeconds;
@@ -34,19 +35,17 @@ class _QuizScreenState extends State<QuizScreen> {
     setTitle = args['setTitle'];
     questions = args['questions'];
 
-    // ⏳ Xác định thời gian dựa theo tiêu đề bộ đề
     if (setTitle.toLowerCase().contains("15p")) {
       remainingSeconds = 15 * 60;
     } else if (setTitle.toLowerCase().contains("30p")) {
       remainingSeconds = 30 * 60;
     } else {
-      remainingSeconds = 20 * 60; // mặc định 20 phút nếu không có thông tin
+      remainingSeconds = 20 * 60;
     }
 
     startTimer();
   }
 
-  /// Bộ đếm thời gian
   void startTimer() {
     timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (remainingSeconds <= 0) {
@@ -62,23 +61,39 @@ class _QuizScreenState extends State<QuizScreen> {
     });
   }
 
-  /// Định dạng thời gian mm:ss
   String formatTime(int seconds) {
     int minutes = seconds ~/ 60;
     int sec = seconds % 60;
     return '${minutes.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}';
   }
-
-  /// Tính điểm & cập nhật QuizController
-  void _submitQuiz({bool autoSubmit = false}) {
+  Future<void> _submitQuiz({bool autoSubmit = false}) async {
     int correct = 0;
+    Map<int, int> userAnswersForBackend = {};
+
     for (int i = 0; i < questions.length; i++) {
-      if (selectedAnswers[i] == questions[i]['answer']) {
+      // Find the correct answer index for this question
+      int correctAnswerIndex = -1;
+      for (int j = 0; j < questions[i].choices.length; j++) {
+        if (questions[i].choices[j].isCorrect) {
+          correctAnswerIndex = j;
+          break;
+        }
+      }
+
+      // Convert index-based answers to ID-based answers for backend
+      if (selectedAnswers.containsKey(i)) {
+        int selectedIndex = selectedAnswers[i]!;
+        userAnswersForBackend[questions[i].id] = questions[i].choices[selectedIndex].id;
+      }
+
+      if (selectedAnswers[i] == correctAnswerIndex) {
         correct++;
       }
     }
+
     int score = ((correct / questions.length) * 10).round();
 
+    // Update local result
     quizController.updateResult(chapterName, setTitle, score, correct);
 
     setState(() {
@@ -86,15 +101,32 @@ class _QuizScreenState extends State<QuizScreen> {
       timer?.cancel();
     });
 
-    // Hiển thị thông báo
-    Get.snackbar(
-      autoSubmit ? "Hết giờ!" : "Hoàn thành",
-      "Bạn đúng $correct / ${questions.length} câu. Điểm: $score",
-      snackPosition: SnackPosition.TOP,
-      backgroundColor: autoSubmit ? Colors.red.shade600 : Colors.green.shade600,
-      colorText: Colors.white,
-    );
+    // Post result to backend
+    try {
+      await quizController.postQuizResult(
+        chapterName: chapterName,
+        setTitle: setTitle,
+        score: score,
+        correct: correct,
+        total: questions.length,
+        quizTypeId: setTitle.toLowerCase().contains("15p") ? 1 : 2,
+        userAnswers: userAnswersForBackend,
+      );
+    } catch (e) {
+      print("Error posting quiz result: $e");
+      // Still show the result even if posting fails
+    }
+
+    Get.off(() => QuizResultScreen(
+      chapterName: chapterName,
+      setTitle: setTitle,
+      score: score,
+      correct: correct,
+      total: questions.length,
+      quizTypeId: setTitle.toLowerCase().contains("15p") ? 1 : 2,
+    ));
   }
+
 
   @override
   void dispose() {
@@ -106,12 +138,18 @@ class _QuizScreenState extends State<QuizScreen> {
   Widget build(BuildContext context) {
     final currentQ = questions[currentQuestion];
 
+    // Find the correct answer index for the current question
+    int correctAnswerIndex = -1;
+    for (int i = 0; i < currentQ.choices.length; i++) {
+      if (currentQ.choices[i].isCorrect) {
+        correctAnswerIndex = i;
+        break;
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          setTitle,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: Text(setTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.green.shade600,
         actions: [
           Padding(
@@ -134,29 +172,18 @@ class _QuizScreenState extends State<QuizScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Câu hỏi số
-            Text(
-              "Câu ${currentQuestion + 1}/${questions.length}",
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
+            Text("Câu ${currentQuestion + 1}/${questions.length}",
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
             const SizedBox(height: 12),
-
-            // Nội dung câu hỏi (dùng InlineLatexText để giữ font tiếng Việt cho phần plain)
-            InlineLatexText(
-              text: currentQ['question'] as String,
-              fontSize: 17,
-              fontWeight: FontWeight.w500,
-            ),
+            InlineLatexText(text: currentQ.content, fontSize: 17, fontWeight: FontWeight.w500),
             const SizedBox(height: 20),
-
-            // Danh sách đáp án
             Expanded(
               child: ListView.builder(
-                itemCount: (currentQ['options'] as List).length,
+                itemCount: currentQ.choices.length,
                 itemBuilder: (context, index) {
-                  final option = (currentQ['options'] as List)[index] as String;
+                  final choice = currentQ.choices[index];
                   final selected = selectedAnswers[currentQuestion] == index;
-                  final isCorrect = (currentQ['answer'] as int) == index;
+                  final isCorrect = correctAnswerIndex == index;
 
                   Color borderColor = Colors.grey.shade400;
                   Color textColor = Colors.black;
@@ -177,11 +204,7 @@ class _QuizScreenState extends State<QuizScreen> {
                   return GestureDetector(
                     onTap: isSubmitted
                         ? null
-                        : () {
-                      setState(() {
-                        selectedAnswers[currentQuestion] = index;
-                      });
-                    },
+                        : () => setState(() => selectedAnswers[currentQuestion] = index),
                     child: Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(12),
@@ -192,28 +215,15 @@ class _QuizScreenState extends State<QuizScreen> {
                       child: Row(
                         children: [
                           Icon(
-                            selected
-                                ? Icons.radio_button_checked
-                                : Icons.radio_button_off,
+                            selected ? Icons.radio_button_checked : Icons.radio_button_off,
                             color: isSubmitted
-                                ? (isCorrect
-                                ? Colors.green
-                                : selected
-                                ? Colors.red
-                                : Colors.grey)
+                                ? (isCorrect ? Colors.green : selected ? Colors.red : Colors.grey)
                                 : selected
                                 ? Colors.blue
                                 : Colors.grey,
                           ),
                           const SizedBox(width: 12),
-                          // Dùng InlineLatexText để render option (có hoặc không có LaTeX)
-                          Expanded(
-                            child: InlineLatexText(
-                              text: option,
-                              fontSize: 16,
-                              color: textColor,
-                            ),
-                          ),
+                          Expanded(child: InlineLatexText(text: choice.content, fontSize: 16, color: textColor)),
                         ],
                       ),
                     ),
@@ -221,46 +231,23 @@ class _QuizScreenState extends State<QuizScreen> {
                 },
               ),
             ),
-
             const SizedBox(height: 10),
-
-            // Điều hướng + Nộp bài
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 ElevatedButton(
-                  onPressed: currentQuestion > 0
-                      ? () {
-                    setState(() {
-                      currentQuestion--;
-                    });
-                  }
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey.shade400,
-                    foregroundColor: Colors.black,
-                  ),
+                  onPressed: currentQuestion > 0 ? () => setState(() => currentQuestion--) : null,
                   child: const Text("Trước"),
                 ),
                 ElevatedButton(
                   onPressed: currentQuestion < questions.length - 1
-                      ? () {
-                    setState(() {
-                      currentQuestion++;
-                    });
-                  }
+                      ? () => setState(() => currentQuestion++)
                       : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey.shade400,
-                    foregroundColor: Colors.black,
-                  ),
                   child: const Text("Tiếp"),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-
-            // Nút nộp bài
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -280,21 +267,10 @@ class _QuizScreenState extends State<QuizScreen> {
                   _submitQuiz();
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                  isSubmitted ? Colors.grey.shade400 : Colors.green.shade600,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                  backgroundColor: isSubmitted ? Colors.grey.shade400 : Colors.green.shade600,
                 ),
-                child: Text(
-                  isSubmitted ? "Đã nộp bài" : "Nộp bài",
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+                child: Text(isSubmitted ? "Đã nộp bài" : "Nộp bài",
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
               ),
             ),
           ],

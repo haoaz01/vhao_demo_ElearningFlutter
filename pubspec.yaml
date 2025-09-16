@@ -45,17 +45,22 @@ dependencies:
   dio: ^5.9.0
   syncfusion_flutter_pdfviewer: ^31.1.19
   flutter_pdfview: ^1.4.1+1
+  image_picker: ^1.2.0
+  youtube_player_flutter: ^9.1.2
+  get_storage: ^2.1.1
+  cached_network_image: ^3.4.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  build_runner: ^2.8.0
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -70,6 +75,7 @@ flutter:
   assets:
     - assets/
     - assets/icon/
+    - assets/images/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

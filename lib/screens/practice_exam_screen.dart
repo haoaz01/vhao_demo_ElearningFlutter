@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/practice_exam_controller.dart';
-import '../model/pdffile_model.dart';
+import '../model/practice_exam_model.dart';
 import 'practice_exam_detail_screen.dart';
 
 class PracticeExamScreen extends StatefulWidget {
   final String subject;
   final String grade;
-  final PracticeExamController controller;
+  final PracticeExamController practiceExamController;
 
   const PracticeExamScreen({
     Key? key,
     required this.subject,
     required this.grade,
-    required this.controller,
+    required this.practiceExamController,
   }) : super(key: key);
 
   @override
@@ -25,7 +25,7 @@ class _PracticeExamScreenState extends State<PracticeExamScreen> {
   void initState() {
     super.initState();
     // Load exams when the screen initializes
-    widget.controller.loadExams(widget.subject, widget.grade);
+    widget.practiceExamController.loadExams(widget.subject, widget.grade);
   }
 
   @override
@@ -45,29 +45,29 @@ class _PracticeExamScreenState extends State<PracticeExamScreen> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Obx(() {
-          if (widget.controller.isLoading.value) {
+          if (widget.practiceExamController.isLoading.value) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (widget.controller.errorMessage.isNotEmpty) {
+          if (widget.practiceExamController.errorMessage.isNotEmpty) {
             return Center(
               child: Text(
-                widget.controller.errorMessage.value,
+                widget.practiceExamController.errorMessage.value,
                 style: const TextStyle(color: Colors.red),
               ),
             );
           }
 
-          if (widget.controller.exams.isEmpty) {
+          if (widget.practiceExamController.exams.isEmpty) {
             return const Center(
               child: Text("Chưa có đề thi nào cho môn học này"),
             );
           }
 
           return ListView.builder(
-            itemCount: widget.controller.exams.length,
+            itemCount: widget.practiceExamController.exams.length,
             itemBuilder: (context, index) {
-              final PdfFile exam = widget.controller.exams[index];
+              final PracticeExam exam = widget.practiceExamController.exams[index];
               return _buildExamItem(exam, context);
             },
           );
@@ -76,7 +76,7 @@ class _PracticeExamScreenState extends State<PracticeExamScreen> {
     );
   }
 
-  Widget _buildExamItem(PdfFile exam, BuildContext context) {
+  Widget _buildExamItem(PracticeExam exam, BuildContext context) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
       elevation: 3,
