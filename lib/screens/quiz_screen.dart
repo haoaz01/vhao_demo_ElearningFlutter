@@ -122,6 +122,7 @@ class _QuizScreenState extends State<QuizScreen> {
         quizTypeId: quizTypeId,
         attemptNo: result.attemptNo,
         durationSeconds: result.durationSeconds,
+        quizId: quizId,
       ));
     } catch (e) {
       Get.off(() => QuizResultScreen(
@@ -133,6 +134,7 @@ class _QuizScreenState extends State<QuizScreen> {
         quizTypeId: quizTypeId,
         attemptNo: 1,
         durationSeconds: durationSeconds,
+        quizId: quizId,
       ));
     }
   }

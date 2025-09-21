@@ -118,7 +118,16 @@ class AppPages {
           quizTypeId: args['quizTypeId'] ?? 0,
           attemptNo: args['attemptNo'] ?? 1,
           durationSeconds: args['durationSeconds'] ?? 0,
+          quizId: args['quizId'] ?? 0, // Add this line
         );
+      },
+      transition: Transition.cupertino,
+    ),
+    GetPage(
+      name: AppRoutes.quizHistory,
+      page: () {
+        final args = Get.arguments as Map<String, dynamic>;
+        return QuizHistoryScreen(quizId: args['quizId']);
       },
       transition: Transition.cupertino,
     ),

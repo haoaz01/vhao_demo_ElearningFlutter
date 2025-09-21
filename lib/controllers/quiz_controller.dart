@@ -1,9 +1,12 @@
 import 'package:get/get.dart';
+import '../model/quiz_history_model.dart';
 import '../model/quiz_model.dart';
 import '../model/question_model.dart';
 import '../model/choice_model.dart';
 import '../model/quiz_result_model.dart';
 import '../repositories/quiz_repository.dart';
+import 'auth_controller.dart';
+import 'package:flutter/material.dart';
 
 class QuizController extends GetxController {
   final QuizRepository quizRepository = QuizRepository();
@@ -18,6 +21,8 @@ class QuizController extends GetxController {
   var lastResult = Rxn<QuizResult>();
   var chapters = <Map<String, dynamic>>[].obs;
   var quizResults = <String, Map<String, dynamic>>{}.obs;
+  var quizHistory = <QuizHistory>[].obs;
+  var isHistoryLoading = false.obs;
 
   @override
   void onInit() {
@@ -175,6 +180,34 @@ class QuizController extends GetxController {
 
   bool isCompleted(String chapterName, String setTitle) {
     return quizResults["$chapterName-$setTitle"]?["completed"] ?? false;
+  }
+
+  Future<void> fetchQuizHistory(int quizId) async {
+    try {
+      isHistoryLoading.value = true;
+
+      // Get userId from AuthController
+      final authController = Get.find<AuthController>();
+      final userId = authController.userId.value;
+
+      if (userId == 0) {
+        throw Exception("User not logged in");
+      }
+
+      final history = await quizRepository.getQuizHistory(quizId, userId);
+      quizHistory.assignAll(history);
+    } catch (e) {
+      print("❌ Error fetching quiz history: $e");
+      Get.snackbar(
+        "Lỗi",
+        "Không thể tải lịch sử làm bài: ${e.toString()}",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      isHistoryLoading.value = false;
+    }
   }
 
   int _convertSubjectToId(String subject) {

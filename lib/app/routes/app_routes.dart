@@ -13,7 +13,7 @@ class AppRoutes {
   static const quizDetail = '/quiz_detail';
   static const quiz = '/quiz';
   static const quizResult = '/quiz_result';
-  static const quizHistory = '/quiz-history';
+  static const quizHistory = '/quiz_history';
   static const practiceExam = '/practice_exam';
   static const practiceExamDetail = '/practice_exam_detail';
   static const solveExercisesDetail = '/solve_exercises_detail';

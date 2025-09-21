@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../model/quiz_history_model.dart';
 import '../model/quiz_model.dart';
 import '../model/question_model.dart';
 import '../model/choice_model.dart';
@@ -159,4 +160,34 @@ class QuizRepository {
     }
   }
 
+  // Add this method to your QuizRepository class
+  Future<List<QuizHistory>> getQuizHistory(int quizId, int userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final authToken = prefs.getString('authToken');
+
+    final uri = Uri.parse("$baseUrl/$quizId/users/$userId/history");
+
+    print("📤 [GET QUIZ HISTORY]");
+    print("➡️ URL: $uri");
+    print("➡️ Headers: {Authorization: Bearer $authToken}");
+
+    final response = await http.get(
+      uri,
+      headers: {
+        "Content-Type": "application/json",
+        if (authToken != null && authToken.isNotEmpty) "Authorization": "Bearer $authToken",
+      },
+    );
+
+    print("📥 [RESPONSE]");
+    print("⬅️ Status: ${response.statusCode}");
+    print("⬅️ Body: ${response.body}");
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => QuizHistory.fromJson(json)).toList();
+    } else {
+      throw Exception("Failed to load quiz history. Status: ${response.statusCode}, Body: ${response.body}");
+    }
+  }
 }

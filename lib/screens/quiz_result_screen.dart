@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../app/routes/app_routes.dart';
 import '../controllers/quiz_controller.dart';
+import '../screens/quiz_history_screen.dart'; // Add this import
 
 class QuizResultScreen extends StatelessWidget {
   final String chapterName;
@@ -12,6 +13,7 @@ class QuizResultScreen extends StatelessWidget {
   final int quizTypeId;
   final int attemptNo;
   final int durationSeconds;
+  final int quizId; // Add quizId parameter
 
   QuizResultScreen({
     super.key,
@@ -23,6 +25,7 @@ class QuizResultScreen extends StatelessWidget {
     required this.quizTypeId,
     required this.attemptNo,
     required this.durationSeconds,
+    required this.quizId, // Add this required parameter
   });
 
   final QuizController quizController = Get.find<QuizController>();
@@ -180,6 +183,30 @@ class QuizResultScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 32),
+              // History Button - Add this button
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Get.toNamed(AppRoutes.quizHistory, arguments: {'quizId': quizId});
+                  },
+                  icon: const Icon(Icons.history),
+                  label: const Text(
+                    "Xem Lịch Sử",
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 height: 50,
