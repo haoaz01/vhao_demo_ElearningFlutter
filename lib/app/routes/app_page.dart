@@ -9,6 +9,7 @@ import '../../screens/lesson_detail_screen.dart';
 import '../../screens/practice_exam_detail_screen.dart';
 import '../../screens/practice_exam_screen.dart';
 import '../../screens/quiz_detail_screen.dart';
+import '../../screens/quiz_history_screen.dart';
 import '../../screens/quiz_result_screen.dart';
 import '../../screens/quiz_screen.dart';
 import '../../screens/reset_pass_screen.dart';
@@ -82,11 +83,10 @@ class AppPages {
     GetPage(
       name: AppRoutes.solveExercisesDetail,
       page: () {
-        final args = Get.arguments ?? {};
-        final lesson = args['lesson'];
-        return SolveExercisesDetailScreen(lesson: lesson);
+        final arguments = Get.arguments;
+        final lessonId = arguments['lessonId'];
+        return SolveExercisesDetailScreen(lessonId: lessonId);
       },
-      transition: Transition.cupertino,
     ),
 
     GetPage(
@@ -116,6 +116,8 @@ class AppPages {
           correct: args['correct'] ?? 0,
           total: args['total'] ?? 0,
           quizTypeId: args['quizTypeId'] ?? 0,
+          attemptNo: args['attemptNo'] ?? 1,
+          durationSeconds: args['durationSeconds'] ?? 0,
         );
       },
       transition: Transition.cupertino,

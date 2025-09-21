@@ -13,11 +13,10 @@ class QuizDetailScreen extends StatelessWidget {
     required this.grade,
   });
 
-  final QuizController quizController = Get.put(QuizController());
+  final QuizController quizController = Get.find<QuizController>();
 
   @override
   Widget build(BuildContext context) {
-    // Load quiz khi screen được khởi tạo
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (quizController.chapters.isEmpty) {
         quizController.loadQuiz(subject, grade);
@@ -26,9 +25,9 @@ class QuizDetailScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "Danh sách Quiz",
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          "Quiz - $subject Lớp $grade",
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.green.shade600,
       ),
@@ -61,9 +60,7 @@ class QuizDetailScreen extends StatelessWidget {
               final chapter = quizController.chapters[chapterIndex];
 
               return Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 5,
                 margin: const EdgeInsets.only(bottom: 20),
                 child: Padding(
@@ -73,10 +70,7 @@ class QuizDetailScreen extends StatelessWidget {
                     children: [
                       Text(
                         chapter["chapter"],
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 12),
                       ListView.builder(
@@ -89,70 +83,50 @@ class QuizDetailScreen extends StatelessWidget {
                           final correct = quizController.getCorrectAnswers(chapter["chapter"], quizSet["title"]);
                           final totalQuestions = quizSet["questions"].length;
                           final isCompleted = quizController.isCompleted(chapter["chapter"], quizSet["title"]);
+                          final quiz = quizSet["quiz"];
 
-                          return Card(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 3,
+                          return Container(
                             margin: const EdgeInsets.only(bottom: 12),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    quizSet["title"],
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.grey.shade200,
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                )
+                              ],
+                            ),
+                            child: ListTile(
+                              title: Text(
+                                quizSet["title"],
+                                style: const TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.w600),
+                              ),
+                              subtitle: Text("Điểm: $score | Đúng: $correct/$totalQuestions"),
+                              trailing: ElevatedButton(
+                                onPressed: () async {
+                                  await Get.toNamed(
+                                    AppRoutes.quiz,
+                                    arguments: {
+                                      'chapterName': chapter["chapter"],
+                                      'setTitle': quizSet["title"],
+                                      'questions': quizSet["questions"],
+                                      'quizId': quiz.id,
+                                      'quizTypeId': quiz.quizTypeId,
+                                    },
+                                  );
+                                  await quizController.loadQuiz(subject, grade);
+                                  quizController.update();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isCompleted ? Colors.blue : Colors.green,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text("Điểm: $score"),
-                                      Text("Đúng: $correct / $totalQuestions"),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: isCompleted
-                                            ? Colors.blue.shade600
-                                            : Colors.green.shade600,
-                                        padding: const EdgeInsets.symmetric(vertical: 12),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                      ),
-                                      onPressed: () async {
-                                        await Get.toNamed(
-                                          AppRoutes.quiz,
-                                          arguments: {
-                                            'chapterName': chapter["chapter"],
-                                            'setTitle': quizSet["title"],
-                                            'questions': quizSet["questions"],
-                                            'isReview': isCompleted,
-                                          },
-                                        );
-                                        await quizController.loadQuiz(subject, grade);
-                                        quizController.update();
-                                      },
-                                      child: Text(
-                                        isCompleted ? "Xem lại" : "Bắt đầu",
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                                ),
+                                child: Text(isCompleted ? "Làm lại" : "Bắt đầu"),
                               ),
                             ),
                           );

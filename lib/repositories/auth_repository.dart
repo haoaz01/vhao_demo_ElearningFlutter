@@ -27,16 +27,21 @@ class AuthRepository {
     return {'success': false, 'message': 'Network error: ${e.toString()}'};
   }
 
-  // Đăng ký tài khoản
+// Đăng ký tài khoản
   static Future<Map<String, dynamic>> register({
     required String email,
     required String password,
+    required String username, // Thêm username parameter
   }) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/register'),
         headers: getHeaders(),
-        body: json.encode({'email': email, 'password': password}),
+        body: json.encode({
+          'email': email,
+          'password': password,
+          'username': username, // Gửi username đến backend
+        }),
       );
 
       final responseData = json.decode(response.body);

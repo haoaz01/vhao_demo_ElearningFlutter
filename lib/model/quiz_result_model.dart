@@ -1,4 +1,3 @@
-// quiz_result_model.dart
 class QuizResult {
   final int id;
   final int quizId;
@@ -6,6 +5,10 @@ class QuizResult {
   final double score;
   final int correctAnswers;
   final int totalQuestions;
+  final int attemptNo;
+  final int durationSeconds;
+  final String status;
+  final DateTime completedAt;
   final DateTime createdAt;
 
   QuizResult({
@@ -15,6 +18,10 @@ class QuizResult {
     required this.score,
     required this.correctAnswers,
     required this.totalQuestions,
+    required this.attemptNo,
+    required this.durationSeconds,
+    required this.status,
+    required this.completedAt,
     required this.createdAt,
   });
 
@@ -26,6 +33,10 @@ class QuizResult {
       score: json['score']?.toDouble() ?? 0.0,
       correctAnswers: json['correctAnswers'] ?? 0,
       totalQuestions: json['totalQuestions'] ?? 0,
+      attemptNo: json['attemptNo'] ?? 1,
+      durationSeconds: json['durationSeconds'] ?? 0,
+      status: json['status'] ?? 'INCOMPLETE',
+      completedAt: DateTime.tryParse(json['completedAt'] ?? "") ?? DateTime.now(),
       createdAt: DateTime.tryParse(json['createdAt'] ?? "") ?? DateTime.now(),
     );
   }
@@ -38,6 +49,10 @@ class QuizResult {
       'score': score,
       'correctAnswers': correctAnswers,
       'totalQuestions': totalQuestions,
+      'attemptNo': attemptNo,
+      'durationSeconds': durationSeconds,
+      'status': status,
+      'completedAt': completedAt.toIso8601String(),
       'createdAt': createdAt.toIso8601String(),
     };
   }

@@ -88,7 +88,7 @@ class TheoryScreen extends StatelessWidget {
                         // Flow giải bài tập: đi đến trang giải bài tập
                         Get.toNamed(
                           AppRoutes.solveExercisesDetail,
-                          arguments: {'lesson': lesson},
+                          arguments: {'lessonId': lesson.id}, // Chỉ truyền ID
                         );
                       }
                     },

@@ -2,15 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../model/lesson_model.dart';
 import '../model/exercise_model.dart';
+import '../controllers/theory_controller.dart';
 
 class SolveExercisesDetailScreen extends StatelessWidget {
-  final Lesson lesson;
+  final int lessonId;
   final Color primaryGreen = const Color(0xFF4CAF50);
+  final TheoryController theoryController = Get.find<TheoryController>();
 
-  SolveExercisesDetailScreen({required this.lesson});
+  SolveExercisesDetailScreen({required this.lessonId});
 
   @override
   Widget build(BuildContext context) {
+    // Lấy lesson từ controller thay vì từ arguments
+    final Lesson lesson = theoryController.getLessonById(lessonId);
+
     return Scaffold(
       appBar: AppBar(
         title: Text("Giải bài tập - ${lesson.title}"),

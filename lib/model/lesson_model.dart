@@ -1,4 +1,3 @@
-
 import 'content_item_model.dart';
 import 'exercise_model.dart';
 
@@ -7,7 +6,7 @@ class Lesson {
   final String title;
   final String videoUrl;
   List<ContentItem> contents;
-  final List<Exercise> exercises;
+  List<Exercise> exercises;
 
   Lesson({
     required this.id,
@@ -43,7 +42,7 @@ class Lesson {
     return Lesson(
       id: json['id'] ?? 0,
       title: json['title'] ?? '',
-      videoUrl: json['video_url'] ?? '',
+      videoUrl: json['videoUrl'] ?? '',
       contents: contents,
       exercises: exercises,
     );
@@ -53,7 +52,7 @@ class Lesson {
     return {
       'id': id,
       'title': title,
-      'video_url': videoUrl,
+      'videoUrl': videoUrl,
       'contents': contents.map((c) => c.toJson()).toList(),
       'exercises': exercises.map((e) => e.toJson()).toList(),
     };

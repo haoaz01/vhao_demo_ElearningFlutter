@@ -39,11 +39,16 @@ class PracticeExamController extends GetxController {
 
   String _convertSubjectToApiFormat(String subject) {
     switch (subject.toLowerCase()) {
-      case 'toán': return 'toan';
-      case 'khoa học tự nhiên': return 'khoahoctunhien';
-      case 'ngữ văn': return 'nguvan';
-      case 'tiếng anh': return 'tienganh';
-      default: return subject.toLowerCase();
+      case 'toán':
+        return 'toan';
+      case 'khoa học tự nhiên':
+        return 'khoahoctunhien';
+      case 'ngữ văn':
+        return 'nguvan';
+      case 'tiếng anh':
+        return 'tienganh';
+      default:
+        return subject.toLowerCase();
     }
   }
 }

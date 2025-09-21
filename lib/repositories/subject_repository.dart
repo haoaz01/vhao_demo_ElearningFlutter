@@ -91,13 +91,41 @@ class SubjectRepository {
     try {
       final url = "$baseUrl/lessons/$lessonId/contents";
       final res = await _getWithRetry(url);
-      final list = (json.decode(res) as List)
+      final List<dynamic> jsonList = json.decode(res);
+      final list = jsonList
           .map((x) => ContentItem.fromJson(x))
           .toList()
         ..sort((a, b) => a.order.compareTo(b.order));
       return list;
     } catch (e) {
       print("Error fetching lesson contents: $e");
+      return [];
+    }
+  }
+
+  /// Tối ưu hóa: Lấy lessons với đầy đủ thông tin (bao gồm cả contents nếu có)
+  Future<List<Lesson>> getLessonsWithContents(int chapterId) async {
+    try {
+      final url = "$baseUrl/chapters/$chapterId/lessons";
+      final res = await _getWithRetry(url);
+      final List<dynamic> jsonList = json.decode(res);
+
+      List<Lesson> lessons = [];
+      for (var lessonJson in jsonList) {
+        Lesson lesson = Lesson.fromJson(lessonJson);
+
+        // Nếu lesson chưa có contents, fetch thêm
+        if (lesson.contents.isEmpty) {
+          final contents = await getLessonContents(lesson.id);
+          lesson = lesson.copyWith(contents: contents);
+        }
+
+        lessons.add(lesson);
+      }
+
+      return lessons;
+    } catch (e) {
+      print("Error fetching lessons with contents: $e");
       return [];
     }
   }
@@ -126,22 +154,21 @@ class SubjectRepository {
       for (var chapterJson in chaptersJson) {
         final chapterId = chapterJson['id'];
 
-        // Lấy danh sách lessons
-        final lessonsRes = await _getWithRetry("$baseUrl/chapters/$chapterId/lessons");
-        final lessonsJson = json.decode(lessonsRes) as List;
+        // Sử dụng phương thức tối ưu để lấy lessons với contents
+        List<Lesson> lessons = await getLessonsWithContents(chapterId);
 
-        List<Lesson> lessons = [];
+        // Lấy exercises của từng lesson
+        for (int i = 0; i < lessons.length; i++) {
+          final lesson = lessons[i];
 
-        for (var lessonJson in lessonsJson) {
-          Lesson lesson = Lesson.fromJson(lessonJson);
+          // Debug: In ra thông tin lesson
+          print("Loading exercises for lesson: ${lesson.id} - ${lesson.title}");
 
-          // Lấy lesson contents
-          final contents = await getLessonContents(lesson.id);
-          lesson = lesson.copyWith(contents: contents);
-
-          // Lấy exercises của lesson
           final exercisesRes = await _getWithRetry("$baseUrl/lessons/${lesson.id}/exercises");
           final exercisesJson = json.decode(exercisesRes) as List;
+
+          // Debug: In ra số lượng exercises
+          print("Found ${exercisesJson.length} exercises for lesson ${lesson.id}");
 
           List<Exercise> exercises = [];
 
@@ -151,14 +178,18 @@ class SubjectRepository {
             // Lấy solutions của exercise
             final solutionsRes = await _getWithRetry("$baseUrl/exercises/${exercise.id}/solutions");
             final solutionsJson = json.decode(solutionsRes) as List;
+
+            // Debug: In ra số lượng solutions
+            print("Found ${solutionsJson.length} solutions for exercise ${exercise.id}");
+
             final solutions = solutionsJson.map((x) => ExerciseSolution.fromJson(x)).toList();
 
             exercise = exercise.copyWith(solutions: solutions);
             exercises.add(exercise);
           }
 
-          lesson = lesson.copyWith(exercises: exercises);
-          lessons.add(lesson);
+          // Tạo lesson mới với exercises và cập nhật vào danh sách
+          lessons[i] = lesson.copyWith(exercises: exercises);
         }
 
         Chapter chapter = Chapter.fromJson(chapterJson);

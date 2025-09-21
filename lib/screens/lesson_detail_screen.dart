@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
@@ -25,7 +24,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen>
   YoutubePlayerController? _youtubeController;
   final TheoryController theoryController = Get.find<TheoryController>();
   final SubjectRepository repository = SubjectRepository();
-  bool _isLoading = true;
+  bool _isLoading = false; // Đã có contents nên không cần loading ban đầu
   bool _isYoutube = false;
   late AnimationController _animController;
   bool _isCompleted = false;
@@ -47,11 +46,24 @@ class _LessonDetailScreenState extends State<LessonDetailScreen>
     );
 
     _initializePlayer();
-    _loadContents(); // ✅ tự fetch nội dung lesson
+
+    // Nếu lesson đã có contents từ API trước đó, không cần load lại
+    if (widget.lesson.contents.isEmpty) {
+      _loadContents();
+    }
   }
 
   Future<void> _initializePlayer() async {
     final videoUrl = widget.lesson.videoUrl;
+
+    // Debug: In ra videoUrl để kiểm tra
+    print("Initializing video player with URL: $videoUrl");
+
+    if (videoUrl.isEmpty) {
+      print("Video URL is empty");
+      return;
+    }
+
     String cleanUrl = videoUrl.split('&t=')[0];
     final videoId = YoutubePlayer.convertUrlToId(cleanUrl);
 
@@ -80,14 +92,12 @@ class _LessonDetailScreenState extends State<LessonDetailScreen>
 
   Future<void> _loadContents() async {
     try {
-      final res = await repository.getLessonContents(widget.lesson.id);
-      final list = (json.decode(res as String) as List)
-          .map((x) => ContentItem.fromJson(x))
-          .toList()
-        ..sort((a, b) => a.order.compareTo(b.order));
+      setState(() => _isLoading = true);
+
+      final List<ContentItem> contentItems = await repository.getLessonContents(widget.lesson.id);
 
       setState(() {
-        widget.lesson.contents = list;
+        widget.lesson.contents = contentItems;
         _isLoading = false;
       });
     } catch (e) {
@@ -107,8 +117,11 @@ class _LessonDetailScreenState extends State<LessonDetailScreen>
 
   Widget _buildVideoPlayer() {
     if (_isYoutube && _youtubeController != null) {
-      return YoutubePlayer(controller: _youtubeController!, showVideoProgressIndicator: true);
-    } else if (_chewieController != null) {
+      return YoutubePlayer(
+        controller: _youtubeController!,
+        showVideoProgressIndicator: true,
+      );
+    } else if (_chewieController != null && _videoController != null && _videoController!.value.isInitialized) {
       return AspectRatio(
         aspectRatio: _videoController!.value.aspectRatio,
         child: ClipRRect(
@@ -116,8 +129,28 @@ class _LessonDetailScreenState extends State<LessonDetailScreen>
           child: Chewie(controller: _chewieController!),
         ),
       );
+    } else if (widget.lesson.videoUrl.isNotEmpty) {
+      // Hiển thị placeholder nếu có video URL nhưng chưa khởi tạo xong
+      return Container(
+        height: 200,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 8),
+              Text("Đang tải video..."),
+            ],
+          ),
+        ),
+      );
     } else {
-      return const Center(child: Text("Không thể phát video"));
+      // Ẩn hoàn toàn phần video nếu không có video
+      return SizedBox.shrink();
     }
   }
 
@@ -126,14 +159,53 @@ class _LessonDetailScreenState extends State<LessonDetailScreen>
       case 'text':
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Text(item.value, style: const TextStyle(fontSize: 16, height: 1.5)),
+          child: Text(
+              item.value,
+              style: const TextStyle(fontSize: 16, height: 1.5)
+          ),
         );
       case 'image':
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 16.0),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),
-            child: Image.network(item.value, fit: BoxFit.cover),
+            child: Image.network(
+              item.value,
+              fit: BoxFit.cover,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Container(
+                  height: 200,
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      value: loadingProgress.expectedTotalBytes != null
+                          ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                          : null,
+                    ),
+                  ),
+                );
+              },
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.red),
+                        SizedBox(height: 8),
+                        Text("Lỗi tải hình ảnh"),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         );
       default:
@@ -176,14 +248,21 @@ class _LessonDetailScreenState extends State<LessonDetailScreen>
               tag: widget.lesson.title,
               child: Material(
                 color: Colors.transparent,
-                child: Text(widget.lesson.title,
-                    style: const TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.bold)),
+                child: Text(
+                  widget.lesson.title,
+                  style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 20),
-            _buildVideoPlayer(),
-            const SizedBox(height: 20),
+
+            // Chỉ hiển thị video player nếu có video URL
+            if (widget.lesson.videoUrl.isNotEmpty) _buildVideoPlayer(),
+            if (widget.lesson.videoUrl.isNotEmpty) const SizedBox(height: 20),
+
             ...widget.lesson.contents.map(_buildContentItem).toList(),
             const SizedBox(height: 24),
             ScaleTransition(

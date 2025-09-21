@@ -18,6 +18,7 @@ class AuthController extends GetxController {
   var email = ''.obs;
   var username = ''.obs;
   var authToken = ''.obs;
+  var userId = 0.obs;
 
   var classes = ["6", "7", "8", "9"].obs;
   var selectedClass = "".obs;
@@ -40,8 +41,11 @@ class AuthController extends GetxController {
     authToken.value = prefs.getString('authToken') ?? '';
     email.value = prefs.getString('email') ?? '';
     username.value = prefs.getString('username') ?? 'Người dùng';
+    userId.value = prefs.getInt('userId') ?? 0;
     selectedClass.value = prefs.getString('selectedClass') ?? '';
     isClassSelected.value = selectedClass.value.isNotEmpty;
+
+    print("🔑 Load userId from prefs: ${userId.value}");
 
     if (isLoggedIn.value) {
       updateSubjects();
@@ -79,11 +83,21 @@ class AuthController extends GetxController {
       final response = await AuthRepository.register(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
+        username: usernameController.text.trim(), // Thêm username
       );
 
       isLoading.value = false;
 
       if (response['success'] == true) {
+        // Lưu thông tin user từ response, bao gồm ID
+        if (response['user'] != null) {
+          final userData = response['user'];
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setInt('userId', userData['id']);
+          userId.value = userData['id'];
+          username.value = userData['username'] ?? '';
+        }
+
         Get.snackbar(
           "Thành công",
           "Đăng ký thành công!",
@@ -93,7 +107,6 @@ class AuthController extends GetxController {
         );
 
         // Tự động điền thông tin đăng nhập sau khi đăng ký thành công
-        // và chuyển đến màn hình login
         Get.offAllNamed(AppRoutes.login, arguments: {
           'email': emailController.text.trim(),
           'password': passwordController.text.trim()
@@ -131,12 +144,16 @@ class AuthController extends GetxController {
         await prefs.setString('username', response['username'] ?? loginEmail.split('@')[0]);
         await prefs.setString('authToken', response['token'] ?? '');
         await prefs.setBool('isLoggedIn', true);
+        await prefs.setInt('userId', response['userId']); // 🔑 Lưu userId
 
         // Cập nhật state
         isLoggedIn.value = true;
         email.value = loginEmail;
         username.value = response['username'] ?? "Người dùng";
         authToken.value = response['token'] ?? '';
+        userId.value = response['userId'] ?? 0;
+
+        print("✅ Login success - userId: ${userId.value}");
 
         Get.snackbar(
           "Thành công",
@@ -289,10 +306,12 @@ class AuthController extends GetxController {
     await prefs.setBool('isLoggedIn', false);
     await prefs.remove('authToken');
     await prefs.remove('username');
+    await prefs.remove('userId');
 
     isLoggedIn.value = false;
     email.value = '';
     username.value = '';
+    userId.value = 0;
     selectedClass.value = '';
     isClassSelected.value = false;
     authToken.value = '';

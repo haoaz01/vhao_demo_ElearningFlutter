@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-
+import 'package:shared_preferences/shared_preferences.dart';
 import '../model/quiz_model.dart';
 import '../model/question_model.dart';
 import '../model/choice_model.dart';
@@ -9,7 +9,6 @@ import '../model/quiz_result_model.dart';
 class QuizRepository {
   final String baseUrl = "http://192.168.0.144:8080/api/quizzes";
 
-  /// Lấy tất cả quizzes
   Future<List<Quiz>> getAllQuizzes() async {
     final response = await http.get(Uri.parse(baseUrl));
     if (response.statusCode == 200) {
@@ -20,7 +19,6 @@ class QuizRepository {
     }
   }
 
-  /// Lấy quiz theo id
   Future<Quiz> getQuizById(int id) async {
     final response = await http.get(Uri.parse("$baseUrl/$id"));
     if (response.statusCode == 200) {
@@ -30,7 +28,6 @@ class QuizRepository {
     }
   }
 
-  /// Lấy quiz theo code
   Future<Quiz> getQuizByCode(String code) async {
     final response = await http.get(Uri.parse("$baseUrl/code/$code"));
     if (response.statusCode == 200) {
@@ -40,7 +37,6 @@ class QuizRepository {
     }
   }
 
-  /// Lọc quiz theo gradeId và subjectId
   Future<List<Quiz>> getQuizzesBySubjectAndGrade(int gradeId, int subjectId) async {
     final queryParams = {
       "gradeId": gradeId.toString(),
@@ -49,26 +45,19 @@ class QuizRepository {
 
     try {
       final uri = Uri.parse("$baseUrl/filter").replace(queryParameters: queryParams);
-      print("Request URL: ${uri.toString()}");
-
       final response = await http.get(uri);
-      print("Response status: ${response.statusCode}");
-      print("Response body: ${response.body}");
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((json) => Quiz.fromJson(json)).toList();
       } else {
-        print("Request failed with status: ${response.statusCode}");
         throw Exception("Failed to filter quizzes by subject and grade. Status: ${response.statusCode}");
       }
     } catch (e) {
-      print("Request error: $e");
       rethrow;
     }
   }
 
-  /// Lọc quiz theo gradeId, subjectId, quizTypeId (tùy chọn)
   Future<List<Quiz>> getQuizzesByFilter(int gradeId, int subjectId, {int? quizTypeId}) async {
     final queryParams = {
       "gradeId": gradeId.toString(),
@@ -87,7 +76,6 @@ class QuizRepository {
     }
   }
 
-  /// Lấy danh sách câu hỏi trong quiz
   Future<List<Question>> getQuizQuestions(int quizId) async {
     final response = await http.get(Uri.parse("$baseUrl/$quizId/questions"));
     if (response.statusCode == 200) {
@@ -98,7 +86,6 @@ class QuizRepository {
     }
   }
 
-  /// Lấy danh sách lựa chọn trong 1 câu hỏi
   Future<List<Choice>> getQuestionChoices(int questionId) async {
     final response = await http.get(Uri.parse("$baseUrl/questions/$questionId/choices"));
     if (response.statusCode == 200) {
@@ -109,44 +96,60 @@ class QuizRepository {
     }
   }
 
-  /// Nộp bài quiz
-  Future<QuizResult> submitQuiz(int quizId, int userId, Map<int, int> userAnswers) async {
-    final uri = Uri.parse("$baseUrl/$quizId/submit?userId=$userId");
+  Future<QuizResult> submitQuiz(int quizId, Map<int, List<int>> userAnswers, int durationSeconds) async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getInt("userId");
 
-    // Convert integer keys to string keys
-    Map<String, int> stringKeyMap = {};
+    if (userId == null) {
+      throw Exception("UserId not found. Please login again.");
+    }
+
+    // Convert answers to use string keys (JSON requires string keys)
+    Map<String, List<int>> answersWithStringKeys = {};
     userAnswers.forEach((key, value) {
-      stringKeyMap[key.toString()] = value;
+      answersWithStringKeys[key.toString()] = value;
     });
+
+    // Create request body - send userId as number
+    Map<String, dynamic> requestBody = {
+      'userId': userId, // Send as number, not string
+      'answers': answersWithStringKeys,
+      'durationSeconds': durationSeconds,
+    };
+
+    final uri = Uri.parse("$baseUrl/$quizId/submit");
+    final jsonBody = jsonEncode(requestBody);
+
+    // 👉 Log chi tiết trước khi gửi
+    print("📤 [POST QUIZ RESULT]");
+    print("➡️ URL: $uri");
+    print("➡️ Headers: {Content-Type: application/json}");
+    print("➡️ userId: $userId");
+    print("➡️ quizId: $quizId");
+    print("➡️ durationSeconds: $durationSeconds");
+    print("➡️ answers count: ${userAnswers.length}");
+    print("➡️ Body JSON: $jsonBody");
 
     final response = await http.post(
       uri,
       headers: {"Content-Type": "application/json"},
-      body: jsonEncode(stringKeyMap),
+      body: jsonBody,
     );
+
+    // 👉 Log chi tiết sau khi gửi
+    print("📥 [RESPONSE]");
+    print("⬅️ Status: ${response.statusCode}");
+    print("⬅️ Body: ${response.body}");
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      if (data['quizResult'] != null) {
-        return QuizResult.fromJson(data['quizResult']);
-      } else {
-        return QuizResult(
-          id: 0,
-          quizId: quizId,
-          userId: userId,
-          score: data['score']?.toDouble() ?? 0.0,
-          correctAnswers: data['correctAnswers'] ?? 0,
-          totalQuestions: data['totalQuestions'] ?? 0,
-          createdAt: DateTime.now(),
-        );
-      }
+      return QuizResult.fromJson(data);
     } else {
-      throw Exception("Failed to submit quiz. Status: ${response.statusCode}");
+      throw Exception(
+          "Failed to submit quiz. Status: ${response.statusCode}, Body: ${response.body}");
     }
   }
 
-
-  /// Thống kê quiz
   Future<Map<String, dynamic>> getQuizStatistics(int quizId) async {
     final response = await http.get(Uri.parse("$baseUrl/$quizId/statistics"));
     if (response.statusCode == 200) {
@@ -155,4 +158,5 @@ class QuizRepository {
       throw Exception("Failed to load statistics");
     }
   }
+
 }

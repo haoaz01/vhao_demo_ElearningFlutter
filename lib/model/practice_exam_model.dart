@@ -19,13 +19,13 @@ class PracticeExam {
 
   factory PracticeExam.fromJson(Map<String, dynamic> json) {
     return PracticeExam(
-      id: json['id'] ?? 0, // Provide default if null
-      fileName: json['file_name'] ?? '', // Handle null and key mismatch
+      id: json['id'] ?? 0,
+      fileName: json['fileName'] ?? '', // ✅ đổi sang camelCase
       description: json['description'] ?? '',
       subject: json['subject'] ?? '',
       grade: json['grade'] ?? '',
-      examType: json['exam_type'] ?? '', // Handle key mismatch
-      uploadDate: DateTime.parse(json['upload_date'] ?? DateTime.now().toString()), // Handle key mismatch and null
+      examType: json['examType'] ?? '', // ✅ đổi sang camelCase
+      uploadDate: DateTime.tryParse(json['uploadDate'] ?? '') ?? DateTime.now(), // ✅ đổi sang camelCase
     );
   }
 }

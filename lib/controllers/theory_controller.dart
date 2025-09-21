@@ -4,6 +4,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:io';
 
 import '../model/chapter_model.dart';
+import '../model/lesson_model.dart';
 import '../repositories/subject_repository.dart';
 
 class TheoryController extends GetxController {
@@ -104,6 +105,14 @@ class TheoryController extends GetxController {
       final theoryData = await repository.fetchTheory(subjectCode, grade);
 
       chapters.value = theoryData;
+
+      // Debug: In ra thông tin về số lượng exercises
+      for (var chapter in chapters) {
+        for (var lesson in chapter.lessons) {
+          print("Lesson ${lesson.id} has ${lesson.exercises.length} exercises");
+        }
+      }
+
       _updateProgress(subject, grade); // Update progress after loading chapters
     } catch (e) {
       print("Error loading theory: $e");
@@ -245,5 +254,17 @@ class TheoryController extends GetxController {
   double getProgress(String subject, int grade) {
     final progressKey = _getProgressKey(subject, grade);
     return _progressBySubject[progressKey] ?? 0.0;
+  }
+
+  /// Thêm phương thức mới: Lấy lesson theo ID
+  Lesson getLessonById(int lessonId) {
+    for (var chapter in chapters) {
+      for (var lesson in chapter.lessons) {
+        if (lesson.id == lessonId) {
+          return lesson;
+        }
+      }
+    }
+    throw Exception('Lesson with id $lessonId not found');
   }
 }
