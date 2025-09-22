@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../controllers/quiz_controller.dart';
+import '../model/question_content_model.dart';
 import '../widgets/inline_latex_text.dart';
 
 class QuizHistoryScreen extends StatefulWidget {
@@ -30,6 +31,34 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  // Widget để hiển thị danh sách nội dung (TEXT và IMAGE) - giống như trong QuizScreen
+  Widget _buildContent(List<QuestionContent> contents) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: contents.map((content) {
+        if (content.contentType == "TEXT") {
+          return InlineLatexText(
+            text: content.contentValue,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          );
+        } else if (content.contentType == "IMAGE") {
+          return Container(
+            margin: const EdgeInsets.only(top: 8),
+            child: Image.network(
+              content.contentValue,
+              fit: BoxFit.contain,
+              width: double.infinity,
+              height: 120, // Có thể điều chỉnh chiều cao
+            ),
+          );
+        } else {
+          return const SizedBox(); // Trường hợp khác
+        }
+      }).toList(),
+    );
   }
 
   @override
@@ -178,9 +207,11 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
                 children: [
                   Text("Câu ${index + 1}",
                       style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green.shade800)),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green.shade800)),
                   const SizedBox(height: 8),
-                  InlineLatexText(text: question.content, fontSize: 16, fontWeight: FontWeight.w500),
+                  _buildContent(question.contents), // nội dung câu hỏi (TEXT + IMAGE)
                   const SizedBox(height: 12),
                   const Text("Đáp án đúng:",
                       style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
@@ -206,7 +237,10 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
                         border: Border.all(color: Colors.blue.shade200),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: InlineLatexText(text: question.explanation, fontSize: 14),
+                      child: InlineLatexText(
+                        text: question.explanation,
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ],

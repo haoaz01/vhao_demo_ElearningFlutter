@@ -88,6 +88,7 @@ class QuizController extends GetxController {
     try {
       final data = await quizRepository.getQuizQuestions(quizId);
       questions.assignAll(data);
+
       for (var q in data) {
         final ch = await quizRepository.getQuestionChoices(q.id);
         choices[q.id] = ch;
@@ -143,7 +144,10 @@ class QuizController extends GetxController {
           "sets": entry.value.map((quiz) {
             return {
               "title": quiz.code,
-              "questions": quiz.questions,
+              "questions": quiz.questions.map((q) {
+                // Chuyển đổi nội dung cũ sang contents (TEXT + IMAGE)
+                return q;
+              }).toList(),
               "quiz": quiz,
             };
           }).toList(),
@@ -186,7 +190,6 @@ class QuizController extends GetxController {
     try {
       isHistoryLoading.value = true;
 
-      // Get userId from AuthController
       final authController = Get.find<AuthController>();
       final userId = authController.userId.value;
 

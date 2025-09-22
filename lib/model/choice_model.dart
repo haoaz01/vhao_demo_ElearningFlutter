@@ -1,6 +1,6 @@
 class Choice {
   final int id;
-  final String content;
+  final String content; // STRING
   final bool isCorrect;
 
   Choice({
@@ -13,7 +13,7 @@ class Choice {
     return Choice(
       id: json['id'] ?? 0,
       content: json['content'] ?? "",
-      isCorrect: json['isCorrect'] ?? false,
+      isCorrect: json['is_correct'] ?? false,
     );
   }
 
@@ -21,7 +21,7 @@ class Choice {
     return {
       'id': id,
       'content': content,
-      'isCorrect': isCorrect,
+      'is_correct': isCorrect,
     };
   }
 }

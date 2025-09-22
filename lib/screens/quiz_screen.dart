@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/quiz_controller.dart';
+import '../model/question_content_model.dart';
 import '../model/question_model.dart';
 import 'quiz_result_screen.dart';
 import '../widgets/inline_latex_text.dart';
@@ -145,6 +146,34 @@ class _QuizScreenState extends State<QuizScreen> {
     super.dispose();
   }
 
+  // Widget để hiển thị danh sách nội dung (TEXT và IMAGE)
+  Widget _buildContent(List<QuestionContent> contents) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: contents.map((content) {
+        if (content.contentType == "TEXT") {
+          return InlineLatexText(
+            text: content.contentValue,
+            fontSize: 17,
+            fontWeight: FontWeight.w500,
+          );
+        } else if (content.contentType == "IMAGE") {
+          return Container(
+            margin: const EdgeInsets.only(top: 8),
+            child: Image.network(
+              content.contentValue,
+              fit: BoxFit.contain,
+              width: double.infinity,
+              height: 150, // Có thể điều chỉnh chiều cao
+            ),
+          );
+        } else {
+          return const SizedBox(); // Trường hợp khác
+        }
+      }).toList(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentQ = questions[currentQuestion];
@@ -194,11 +223,7 @@ class _QuizScreenState extends State<QuizScreen> {
               elevation: 4,
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: InlineLatexText(
-                  text: currentQ.content,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w500,
-                ),
+                child: _buildContent(currentQ.contents), // Sửa ở đây
               ),
             ),
             const SizedBox(height: 16),
