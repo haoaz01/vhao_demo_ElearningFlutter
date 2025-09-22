@@ -156,7 +156,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen>
 
   Widget _buildContentItem(ContentItem item) {
     switch (item.type) {
-      case 'text':
+      case 'TEXT':
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0),
           child: Text(
@@ -164,7 +164,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen>
               style: const TextStyle(fontSize: 16, height: 1.5)
           ),
         );
-      case 'image':
+      case 'IMAGE':
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 16.0),
           child: ClipRRect(

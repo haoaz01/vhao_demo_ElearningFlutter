@@ -33,11 +33,11 @@ class Quiz {
       id: json['id'] ?? 0,
       code: json['code'] ?? "",
       // Use underscore field names from JSON
-      gradeId: json['grade_id'] ?? 0,       // Changed from gradeId to grade_id
-      subjectId: json['subject_id'] ?? 0,   // Changed from subjectId to subject_id
-      chapterId: json['chapter_id'] ?? 0,   // Changed from chapterId to chapter_id
-      chapterTitle: json['chapter_title'] as String?, // Changed from chapterTitle to chapter_title
-      quizTypeId: json['quiz_type_id'] ?? 0, // Changed from quizTypeId to quiz_type_id
+      gradeId: json['grade_id'] ?? 0,
+      subjectId: json['subject_id'] ?? 0,
+      chapterId: json['chapter_id'] ?? 0,
+      chapterTitle: json['chapter_title'] as String?,
+      quizTypeId: json['quiz_type_id'] ?? 0,
       createdAt: (json['created_at'] != null && json['created_at'].toString().isNotEmpty)
           ? DateTime.tryParse(json['created_at'].toString())
           : null,

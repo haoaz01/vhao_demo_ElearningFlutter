@@ -9,7 +9,7 @@ class ExerciseSolution {
 
   factory ExerciseSolution.fromJson(Map<String, dynamic> json) {
     return ExerciseSolution(
-      type: json['type'] ?? 'text',
+      type: json['type'] ?? 'TEXT',
       value: json['value'] ?? '',
     );
   }

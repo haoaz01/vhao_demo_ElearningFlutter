@@ -14,7 +14,7 @@ class ContentItem {
   factory ContentItem.fromJson(Map<String, dynamic> json) {
     return ContentItem(
       id: json['id'] ?? 0,
-      type: json['contentType'] ?? 'text',
+      type: json['contentType'] ?? 'TEXT',
       value: json['contentValue'] ?? '',
       order: json['contentOrder'] ?? 0,
     );
