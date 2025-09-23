@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
 
@@ -21,7 +22,11 @@ class ForgotPasswordScreen extends StatelessWidget {
           onPressed: () {
             Get.back();
           },
-          icon: const Icon(Icons.arrow_back_ios, size: 20, color: Colors.black),
+          icon: Icon(
+              Icons.arrow_back_ios,
+              size: 20.sp,
+              color: Colors.black
+          ),
         ),
       ),
       body: SizedBox(
@@ -38,64 +43,67 @@ class ForgotPasswordScreen extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      const Column(
+                      Column(
                         children: [
                           Text(
                             "Quên mật khẩu",
                             style: TextStyle(
-                              fontSize: 30,
+                              fontSize: 30.sp,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          SizedBox(height: 10),
+                          SizedBox(height: 10.h),
                           Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 40),
+                            padding: EdgeInsets.symmetric(horizontal: 40.w),
                             child: Text(
                               "Vui lòng nhập email của bạn để nhận liên kết đặt lại mật khẩu",
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 16.sp,
                                 color: Colors.grey,
                               ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 30),
+                      SizedBox(height: 30.h),
+
+                      // Email Field
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 40),
+                        padding: EdgeInsets.symmetric(horizontal: 40.w),
                         child: TextFormField(
                           controller: emailController,
                           keyboardType: TextInputType.emailAddress,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: "Email",
-                            prefixIcon: Icon(Icons.email),
+                            labelStyle: TextStyle(fontSize: 14.sp),
+                            prefixIcon: Icon(Icons.email, size: 20.sp),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(15),
-                              ),
+                              borderRadius: BorderRadius.circular(15.r),
                             ),
                           ),
+                          style: TextStyle(fontSize: 14.sp),
                           validator: (value) {
                             return authController.validateEmail(value);
                           },
                         ),
                       ),
-                      const SizedBox(height: 30),
+                      SizedBox(height: 30.h),
+
+                      // Send Request Button
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 40),
+                        padding: EdgeInsets.symmetric(horizontal: 40.w),
                         child: Container(
-                          padding: const EdgeInsets.only(top: 3, left: 3),
+                          padding: EdgeInsets.only(top: 3.h, left: 3.w),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(50),
+                            borderRadius: BorderRadius.circular(50.r),
                             border: Border.all(color: Colors.black),
                           ),
                           child: MaterialButton(
                             minWidth: double.infinity,
-                            height: 60,
+                            height: 60.h,
                             onPressed: () {
-                              if (_formkeyForgotPassword.currentState!
-                                  .validate()) {
+                              if (_formkeyForgotPassword.currentState!.validate()) {
                                 authController.forgotPassword(
                                   emailController.text.trim(),
                                 );
@@ -104,46 +112,54 @@ class ForgotPasswordScreen extends StatelessWidget {
                             color: Colors.green,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(50),
+                              borderRadius: BorderRadius.circular(50.r),
                             ),
-                            child: const Text(
+                            child: Text(
                               "Gửi yêu cầu",
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
-                                fontSize: 18,
+                                fontSize: 16.sp,
                                 color: Colors.white,
                               ),
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20.h),
+
+                      // Back to Login Link
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text("Quay lại "),
+                          Text(
+                            "Quay lại ",
+                            style: TextStyle(fontSize: 14.sp),
+                          ),
                           GestureDetector(
                             onTap: () {
                               Get.toNamed('/login');
                             },
-                            child: const Text(
+                            child: Text(
                               "Đăng Nhập",
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
-                                fontSize: 18,
+                                fontSize: 16.sp,
                                 color: Colors.green,
                               ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 30),
+                      SizedBox(height: 30.h),
+
+                      // Bottom Image
                       Container(
-                        height: 200,
+                        height: 200.h,
+                        width: double.infinity,
                         decoration: const BoxDecoration(
                           image: DecorationImage(
                             image: AssetImage("assets/images/img_4.png"),
-                            fit: BoxFit.fitHeight,
+                            fit: BoxFit.contain,
                           ),
                         ),
                       ),

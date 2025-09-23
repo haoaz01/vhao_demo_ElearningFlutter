@@ -1,4 +1,6 @@
+// QuizHistoryScreen
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../controllers/quiz_controller.dart';
@@ -33,7 +35,6 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
     super.dispose();
   }
 
-  // Widget để hiển thị danh sách nội dung (TEXT và IMAGE) - giống như trong QuizScreen
   Widget _buildContent(List<QuestionContent> contents) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -41,21 +42,21 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
         if (content.contentType == "TEXT") {
           return InlineLatexText(
             text: content.contentValue,
-            fontSize: 16,
+            fontSize: 16.sp,
             fontWeight: FontWeight.w500,
           );
         } else if (content.contentType == "IMAGE") {
           return Container(
-            margin: const EdgeInsets.only(top: 8),
+            margin: EdgeInsets.only(top: 8.h),
             child: Image.network(
               content.contentValue,
               fit: BoxFit.contain,
               width: double.infinity,
-              height: 120, // Có thể điều chỉnh chiều cao
+              height: 120.h,
             ),
           );
         } else {
-          return const SizedBox(); // Trường hợp khác
+          return const SizedBox();
         }
       }).toList(),
     );
@@ -65,15 +66,18 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Lịch sử Quiz", style: TextStyle(color: Colors.white)),
+        title: Text(
+          "Lịch sử Quiz",
+          style: TextStyle(color: Colors.white, fontSize: 18.sp),
+        ),
         centerTitle: true,
         backgroundColor: Colors.green.shade700,
         iconTheme: const IconThemeData(color: Colors.white),
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
-          labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-          tabs: const [
+          labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp),
+          tabs: [
             Tab(text: "Lịch sử làm bài"),
             Tab(text: "Giải thích"),
           ],
@@ -98,11 +102,10 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
     );
   }
 
-  /// Tab 1: Lịch sử làm bài
   Widget _buildHistoryTab() {
     return Obx(() {
       if (quizController.isHistoryLoading.value) {
-        return const Center(
+        return Center(
           child: CircularProgressIndicator(
             valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
           ),
@@ -114,56 +117,87 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.history, size: 64, color: Colors.green.shade300),
-              const SizedBox(height: 16),
-              const Text("Chưa có lịch sử làm bài", style: TextStyle(fontSize: 18)),
+              Icon(Icons.history, size: 64.w, color: Colors.green.shade300),
+              SizedBox(height: 16.h),
+              Text(
+                "Chưa có lịch sử làm bài",
+                style: TextStyle(fontSize: 18.sp),
+              ),
             ],
           ),
         );
       }
 
       return ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.r),
         itemCount: quizController.quizHistory.length,
         itemBuilder: (context, index) {
           final attempt = quizController.quizHistory[index];
           return Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12.r),
+            ),
             elevation: 3,
-            margin: const EdgeInsets.only(bottom: 16),
+            margin: EdgeInsets.only(bottom: 16.h),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.r),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text("Lần thứ ${attempt.attemptNo}",
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text(
+                        "Lần thứ ${attempt.attemptNo}",
+                        style: TextStyle(
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 6.h,
+                        ),
                         decoration: BoxDecoration(
                           color: _getScoreColor(attempt.score),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(20.r),
                         ),
                         child: Text(
                           "${attempt.score.toStringAsFixed(1)}/10",
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12.sp,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text("Ngày: ${DateFormat('dd/MM/yyyy HH:mm').format(attempt.completedAt)}",
-                      style: TextStyle(color: Colors.grey.shade700)),
-                  const SizedBox(height: 6),
-                  Text("Thời gian: ${_formatDuration(attempt.durationSeconds)}",
-                      style: TextStyle(color: Colors.grey.shade700)),
-                  const SizedBox(height: 6),
-                  Text("Số câu đúng: ${attempt.correctAnswers}/${attempt.totalQuestions}",
-                      style: TextStyle(color: Colors.grey.shade700)),
+                  SizedBox(height: 8.h),
+                  Text(
+                    "Ngày: ${DateFormat('dd/MM/yyyy HH:mm').format(attempt.completedAt)}",
+                    style: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 14.sp,
+                    ),
+                  ),
+                  SizedBox(height: 6.h),
+                  Text(
+                    "Thời gian: ${_formatDuration(attempt.durationSeconds)}",
+                    style: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 14.sp,
+                    ),
+                  ),
+                  SizedBox(height: 6.h),
+                  Text(
+                    "Số câu đúng: ${attempt.correctAnswers}/${attempt.totalQuestions}",
+                    style: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 14.sp,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -173,7 +207,6 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
     });
   }
 
-  /// Tab 2: Giải thích từng câu hỏi
   Widget _buildExplanationTab() {
     return Obx(() {
       if (quizController.questions.isEmpty) {
@@ -181,65 +214,88 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.menu_book, size: 64, color: Colors.green.shade300),
-              const SizedBox(height: 16),
-              const Text("Chưa có dữ liệu giải thích", style: TextStyle(fontSize: 18)),
+              Icon(Icons.menu_book, size: 64.w, color: Colors.green.shade300),
+              SizedBox(height: 16.h),
+              Text(
+                "Chưa có dữ liệu giải thích",
+                style: TextStyle(fontSize: 18.sp),
+              ),
             ],
           ),
         );
       }
 
       return ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.r),
         itemCount: quizController.questions.length,
         itemBuilder: (context, index) {
           final question = quizController.questions[index];
           final correctChoice = question.choices.firstWhere((c) => c.isCorrect);
 
           return Card(
-            margin: const EdgeInsets.only(bottom: 20),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: EdgeInsets.only(bottom: 20.h),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12.r),
+            ),
             elevation: 3,
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.r),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Câu ${index + 1}",
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green.shade800)),
-                  const SizedBox(height: 8),
-                  _buildContent(question.contents), // nội dung câu hỏi (TEXT + IMAGE)
-                  const SizedBox(height: 12),
-                  const Text("Đáp án đúng:",
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-                  const SizedBox(height: 6),
+                  Text(
+                    "Câu ${index + 1}",
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green.shade800,
+                    ),
+                  ),
+                  SizedBox(height: 8.h),
+                  _buildContent(question.contents),
+                  SizedBox(height: 12.h),
+                  Text(
+                    "Đáp án đúng:",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                      fontSize: 14.sp,
+                    ),
+                  ),
+                  SizedBox(height: 6.h),
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(10.r),
                     decoration: BoxDecoration(
                       color: Colors.green.shade50,
                       border: Border.all(color: Colors.green.shade200),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                     ),
-                    child: InlineLatexText(text: correctChoice.content, fontSize: 15),
+                    child: InlineLatexText(
+                      text: correctChoice.content,
+                      fontSize: 15.sp,
+                    ),
                   ),
                   if (question.explanation.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    const Text("Giải thích:",
-                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 12.h),
+                    Text(
+                      "Giải thích:",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                        fontSize: 14.sp,
+                      ),
+                    ),
+                    SizedBox(height: 6.h),
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: EdgeInsets.all(10.r),
                       decoration: BoxDecoration(
                         color: Colors.blue.shade50,
                         border: Border.all(color: Colors.blue.shade200),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(8.r),
                       ),
                       child: InlineLatexText(
                         text: question.explanation,
-                        fontSize: 14,
+                        fontSize: 14.sp,
                       ),
                     ),
                   ],

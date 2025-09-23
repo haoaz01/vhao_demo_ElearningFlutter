@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import '../app/routes/app_routes.dart';
 import '../controllers/quiz_controller.dart';
@@ -27,13 +28,18 @@ class QuizDetailScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           "Quiz - $subject Lớp $grade",
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16.sp,
+          ),
         ),
         backgroundColor: Colors.green.shade600,
       ),
       body: Obx(() {
         if (quizController.isLoading.value) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(
+            child: CircularProgressIndicator(strokeWidth: 2.w),
+          );
         }
 
         if (quizController.chapters.isEmpty) {
@@ -41,10 +47,17 @@ class QuizDetailScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text("Không có quiz nào"),
+                Text(
+                  "Không có quiz nào",
+                  style: TextStyle(fontSize: 16.sp),
+                ),
+                SizedBox(height: 16.h),
                 ElevatedButton(
                   onPressed: () => quizController.loadQuiz(subject, grade),
-                  child: const Text("Thử lại"),
+                  child: Text(
+                    "Thử lại",
+                    style: TextStyle(fontSize: 14.sp),
+                  ),
                 )
               ],
             ),
@@ -54,25 +67,30 @@ class QuizDetailScreen extends StatelessWidget {
         return RefreshIndicator(
           onRefresh: () async => await quizController.loadQuiz(subject, grade),
           child: ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             itemCount: quizController.chapters.length,
             itemBuilder: (context, chapterIndex) {
               final chapter = quizController.chapters[chapterIndex];
 
               return Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16.r)
+                ),
                 elevation: 5,
-                margin: const EdgeInsets.only(bottom: 20),
+                margin: EdgeInsets.only(bottom: 20.h),
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         chapter["chapter"],
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 20.sp,
+                            fontWeight: FontWeight.bold
+                        ),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12.h),
                       ListView.builder(
                         physics: const NeverScrollableScrollPhysics(),
                         shrinkWrap: true,
@@ -86,10 +104,10 @@ class QuizDetailScreen extends StatelessWidget {
                           final quiz = quizSet["quiz"];
 
                           return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
+                            margin: EdgeInsets.only(bottom: 12.h),
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12.r),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.grey.shade200,
@@ -99,12 +117,21 @@ class QuizDetailScreen extends StatelessWidget {
                               ],
                             ),
                             child: ListTile(
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12.w,
+                                  vertical: 8.h
+                              ),
                               title: Text(
                                 quizSet["title"],
-                                style: const TextStyle(
-                                    fontSize: 18, fontWeight: FontWeight.w600),
+                                style: TextStyle(
+                                    fontSize: 18.sp,
+                                    fontWeight: FontWeight.w600
+                                ),
                               ),
-                              subtitle: Text("Điểm: $score | Đúng: $correct/$totalQuestions"),
+                              subtitle: Text(
+                                "Điểm: $score | Đúng: $correct/$totalQuestions",
+                                style: TextStyle(fontSize: 14.sp),
+                              ),
                               trailing: ElevatedButton(
                                 onPressed: () async {
                                   await Get.toNamed(
@@ -123,10 +150,17 @@ class QuizDetailScreen extends StatelessWidget {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: isCompleted ? Colors.blue : Colors.green,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
+                                    borderRadius: BorderRadius.circular(10.r),
+                                  ),
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 16.w,
+                                      vertical: 8.h
                                   ),
                                 ),
-                                child: Text(isCompleted ? "Làm lại" : "Bắt đầu"),
+                                child: Text(
+                                  isCompleted ? "Làm lại" : "Bắt đầu",
+                                  style: TextStyle(fontSize: 12.sp),
+                                ),
                               ),
                             ),
                           );

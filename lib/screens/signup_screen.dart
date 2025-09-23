@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
 
@@ -18,9 +19,13 @@ class SignupScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         leading: IconButton(
           onPressed: () {
-            Navigator.pop(context);
+            Get.back();
           },
-          icon: const Icon(Icons.arrow_back_ios, size: 20, color: Colors.black),
+          icon: Icon(
+              Icons.arrow_back_ios,
+              size: 20.sp,
+              color: Colors.black
+          ),
         ),
       ),
       body: SizedBox(
@@ -37,68 +42,75 @@ class SignupScreen extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      const Column(
+                      Column(
                         children: [
                           Text(
                             "Đăng Ký",
                             style: TextStyle(
-                              fontSize: 30,
+                              fontSize: 30.sp,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 30),
+                      SizedBox(height: 30.h),
+
+                      // Email Field
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 40),
+                        padding: EdgeInsets.symmetric(horizontal: 40.w),
                         child: TextFormField(
                           controller: authController.emailController,
                           keyboardType: TextInputType.emailAddress,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: "Email",
-                            prefixIcon: Icon(Icons.email),
+                            labelStyle: TextStyle(fontSize: 14.sp),
+                            prefixIcon: Icon(Icons.email, size: 20.sp),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(15),
-                              ),
+                              borderRadius: BorderRadius.circular(15.r),
                             ),
                           ),
+                          style: TextStyle(fontSize: 14.sp),
                           validator: (value) {
                             return authController.validateEmail(value);
                           },
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20.h),
+
+                      // Username Field
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 40),
+                        padding: EdgeInsets.symmetric(horizontal: 40.w),
                         child: TextFormField(
                           controller: authController.usernameController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: "Username",
-                            prefixIcon: Icon(Icons.person),
+                            labelStyle: TextStyle(fontSize: 14.sp),
+                            prefixIcon: Icon(Icons.person, size: 20.sp),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(15),
-                              ),
+                              borderRadius: BorderRadius.circular(15.r),
                             ),
                           ),
+                          style: TextStyle(fontSize: 14.sp),
                           validator: (value) {
                             return authController.validateName(value);
                           },
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20.h),
+
+                      // Password Field
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 40),
+                        padding: EdgeInsets.symmetric(horizontal: 40.w),
                         child: Obx(
                               () => TextFormField(
                             controller: authController.passwordController,
-                            obscureText: authController.isPasswordVisible.value,
+                            obscureText: !authController.isPasswordVisible.value,
                             decoration: InputDecoration(
                               labelText: "Password",
-                              prefixIcon: const Icon(Icons.lock),
+                              labelStyle: TextStyle(fontSize: 14.sp),
+                              prefixIcon: Icon(Icons.lock, size: 20.sp),
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(15),
+                                borderRadius: BorderRadius.circular(15.r),
                               ),
                               suffixIcon: IconButton(
                                 onPressed: () {
@@ -109,51 +121,62 @@ class SignupScreen extends StatelessWidget {
                                   authController.isPasswordVisible.value
                                       ? Icons.visibility
                                       : Icons.visibility_off,
+                                  size: 20.sp,
                                 ),
                               ),
                             ),
+                            style: TextStyle(fontSize: 14.sp),
                             validator: (value) {
                               return authController.validatePassword(value);
                             },
                           ),
                         ),
                       ),
-                      const SizedBox(height: 30),
+                      SizedBox(height: 30.h),
+
+                      // Register Button
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 40),
+                        padding: EdgeInsets.symmetric(horizontal: 40.w),
                         child: Container(
-                          padding: const EdgeInsets.only(top: 3, left: 3),
+                          padding: EdgeInsets.only(top: 3.h, left: 3.w),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(50),
+                            borderRadius: BorderRadius.circular(50.r),
                             border: Border.all(color: Colors.black),
                           ),
                           child: MaterialButton(
                             minWidth: double.infinity,
-                            height: 60,
+                            height: 60.h,
                             onPressed: () {
-                              authController.registerUser(_formkeySignup);
+                              if (_formkeySignup.currentState!.validate()) {
+                                authController.registerUser(_formkeySignup);
+                              }
                             },
                             color: Colors.green,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(50),
+                              borderRadius: BorderRadius.circular(50.r),
                             ),
-                            child: const Text(
+                            child: Text(
                               "Đăng ký",
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
-                                fontSize: 18,
+                                fontSize: 16.sp,
                                 color: Colors.white,
                               ),
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20.h),
+
+                      // Login Link
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text("Bạn đã có tài khoản? "),
+                          Text(
+                            "Bạn đã có tài khoản? ",
+                            style: TextStyle(fontSize: 14.sp),
+                          ),
                           GestureDetector(
                             onTap: () {
                               authController.usernameController.clear();
@@ -161,24 +184,27 @@ class SignupScreen extends StatelessWidget {
                               authController.passwordController.clear();
                               Get.toNamed('/login');
                             },
-                            child: const Text(
+                            child: Text(
                               "Đăng Nhập",
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
-                                fontSize: 18,
+                                fontSize: 16.sp,
                                 color: Colors.green,
                               ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 30),
+                      SizedBox(height: 30.h),
+
+                      // Bottom Image
                       Container(
-                        height: 200,
+                        height: 200.h,
+                        width: double.infinity,
                         decoration: const BoxDecoration(
                           image: DecorationImage(
                             image: AssetImage("assets/images/img_4.png"),
-                            fit: BoxFit.fitHeight,
+                            fit: BoxFit.contain,
                           ),
                         ),
                       ),

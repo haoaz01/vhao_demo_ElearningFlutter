@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import '../app/routes/app_routes.dart';
 import '../controllers/quiz_controller.dart';
-import '../screens/quiz_history_screen.dart'; // Add this import
+import '../screens/quiz_history_screen.dart';
 
 class QuizResultScreen extends StatelessWidget {
   final String chapterName;
@@ -13,7 +14,7 @@ class QuizResultScreen extends StatelessWidget {
   final int quizTypeId;
   final int attemptNo;
   final int durationSeconds;
-  final int quizId; // Add quizId parameter
+  final int quizId;
 
   QuizResultScreen({
     super.key,
@@ -25,7 +26,7 @@ class QuizResultScreen extends StatelessWidget {
     required this.quizTypeId,
     required this.attemptNo,
     required this.durationSeconds,
-    required this.quizId, // Add this required parameter
+    required this.quizId,
   });
 
   final QuizController quizController = Get.find<QuizController>();
@@ -58,7 +59,10 @@ class QuizResultScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Kết quả Quiz", style: TextStyle(color: Colors.white)),
+        title: Text(
+            "Kết quả Quiz",
+            style: TextStyle(color: Colors.white, fontSize: 16.sp)
+        ),
         backgroundColor: Colors.green.shade700,
         elevation: 0,
         centerTitle: true,
@@ -78,19 +82,19 @@ class QuizResultScreen extends StatelessWidget {
           ),
         ),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(24.w),
           child: Column(
             children: [
               // Score circle
               Container(
-                width: 150,
-                height: 150,
+                width: 150.w,
+                height: 150.h,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: getScoreColor(),
-                    width: 4,
+                    width: 4.w,
                   ),
                   boxShadow: [
                     BoxShadow(
@@ -105,14 +109,14 @@ class QuizResultScreen extends StatelessWidget {
                   children: [
                     Icon(
                       getScoreIcon(),
-                      size: 40,
+                      size: 40.sp,
                       color: getScoreColor(),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8.h),
                     Text(
                       score.toStringAsFixed(1),
                       style: TextStyle(
-                        fontSize: 32,
+                        fontSize: 32.sp,
                         fontWeight: FontWeight.bold,
                         color: getScoreColor(),
                       ),
@@ -120,28 +124,28 @@ class QuizResultScreen extends StatelessWidget {
                     Text(
                       "/10",
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         color: Colors.grey.shade600,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24.h),
               Text(
                 getScoreText(),
                 style: TextStyle(
-                  fontSize: 24,
+                  fontSize: 24.sp,
                   fontWeight: FontWeight.bold,
                   color: getScoreColor(),
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8.h),
               Text(
                 "Chương: $chapterName",
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 16.sp,
                   color: Colors.green.shade800,
                 ),
               ),
@@ -149,27 +153,27 @@ class QuizResultScreen extends StatelessWidget {
                 "Bộ đề: $setTitle",
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 16.sp,
                   color: Colors.green.shade800,
                 ),
               ),
-              const SizedBox(height: 32),
+              SizedBox(height: 32.h),
               // Results card
               Card(
                 elevation: 4,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(16.r),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: EdgeInsets.all(20.w),
                   child: Column(
                     children: [
                       _buildResultRow("Số câu đúng", "$correct/$total"),
-                      const Divider(),
+                      Divider(height: 20.h),
                       _buildResultRow("Thời gian hoàn thành", formatDuration(durationSeconds)),
-                      const Divider(),
+                      Divider(height: 20.h),
                       _buildResultRow("Lần thử", "$attemptNo"),
-                      const Divider(),
+                      Divider(height: 20.h),
                       _buildResultRow(
                         "Loại đề",
                         quizTypeId == 1
@@ -182,46 +186,47 @@ class QuizResultScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
-              // History Button - Add this button
+              SizedBox(height: 32.h),
+              // History Button
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 50.h,
                 child: ElevatedButton.icon(
                   onPressed: () {
                     Get.toNamed(AppRoutes.quizHistory, arguments: {'quizId': quizId});
                   },
-                  icon: const Icon(Icons.history),
-                  label: const Text(
+                  icon: Icon(Icons.history, size: 20.sp),
+                  label: Text(
                     "Xem Lịch Sử",
-                    style: TextStyle(fontSize: 16),
+                    style: TextStyle(fontSize: 16.sp),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue.shade700,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
                     elevation: 2,
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16.h),
+              // Home Button
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 50.h,
                 child: ElevatedButton.icon(
                   onPressed: () => Get.offAllNamed(AppRoutes.main),
-                  icon: const Icon(Icons.home),
-                  label: const Text(
+                  icon: Icon(Icons.home, size: 20.sp),
+                  label: Text(
                     "Về Trang Chính",
-                    style: TextStyle(fontSize: 16),
+                    style: TextStyle(fontSize: 16.sp),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green.shade700,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
                     elevation: 2,
                   ),
@@ -236,14 +241,14 @@ class QuizResultScreen extends StatelessWidget {
 
   Widget _buildResultRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: 8.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 16.sp,
               fontWeight: FontWeight.w500,
               color: Colors.grey.shade700,
             ),
@@ -251,7 +256,7 @@ class QuizResultScreen extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 16.sp,
               fontWeight: FontWeight.bold,
               color: Colors.green.shade700,
             ),

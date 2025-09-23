@@ -13,7 +13,7 @@ import '../../screens/quiz_detail_screen.dart';
 import '../../screens/quiz_history_screen.dart';
 import '../../screens/quiz_result_screen.dart';
 import '../../screens/quiz_screen.dart';
-import '../../screens/reset_pass_screen.dart';
+import '../../screens/reset_password_screen.dart';
 import '../../screens/search_screen.dart';
 import '../../screens/solve_exercises_detail.dart';
 import '../../screens/subject_detail_screen.dart';

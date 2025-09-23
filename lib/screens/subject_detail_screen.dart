@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import '../app/routes/app_routes.dart';
 import '../controllers/practice_exam_controller.dart';
@@ -29,9 +30,8 @@ class SubjectDetailScreen extends StatelessWidget {
         "title": "Lý thuyết",
         "icon": Image.asset(
           "assets/icon/icon_theory.png",
-          width: 42,
-          height: 42,
-          // Đã xóa color: để giữ nguyên màu PNG gốc
+          width: 42.w,
+          height: 42.h,
         ),
         "color": Colors.blue,
         "onTap": () {
@@ -49,9 +49,8 @@ class SubjectDetailScreen extends StatelessWidget {
         "title": "Giải bài tập",
         "icon": Image.asset(
           "assets/icon/icon_solve_exercise.png",
-          width: 42,
-          height: 42,
-          // Đã xóa color: để giữ nguyên màu PNG gốc
+          width: 42.w,
+          height: 42.h,
         ),
         "color": Colors.green,
         "onTap": () {
@@ -69,9 +68,8 @@ class SubjectDetailScreen extends StatelessWidget {
         "title": "Quiz",
         "icon": Image.asset(
           "assets/icon/icon_quiz.png",
-          width: 42,
-          height: 42,
-          // Đã xóa color: để giữ nguyên màu PNG gốc
+          width: 42.w,
+          height: 42.h,
         ),
         "color": Colors.orange,
         "onTap": () async {
@@ -99,9 +97,8 @@ class SubjectDetailScreen extends StatelessWidget {
         "title": "Bộ đề thi",
         "icon": Image.asset(
           "assets/icon/icon_exam.png",
-          width: 42,
-          height: 42,
-          // Đã xóa color: để giữ nguyên màu PNG gốc
+          width: 42.w,
+          height: 42.h,
         ),
         "color": Colors.purple,
         "onTap": () {
@@ -123,89 +120,89 @@ class SubjectDetailScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Khối $grade - $subject"),
+        title: Text(
+          "Khối $grade - $subject",
+          style: TextStyle(fontSize: 18.sp),
+        ),
         backgroundColor: primaryGreen,
         elevation: 2,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               "$subject cho Khối $grade",
-              style: const TextStyle(
-                fontSize: 26,
+              style: TextStyle(
+                fontSize: 26.sp,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
             ),
-            const SizedBox(height: 16),
-            const Text(
+            SizedBox(height: 16.h),
+            Text(
               "Chọn nội dung bạn muốn học bên dưới:",
-              style: TextStyle(fontSize: 16, color: Colors.black54),
+              style: TextStyle(
+                  fontSize: 16.sp,
+                  color: Colors.black54
+              ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24.h),
 
-            // Grid hiển thị các thẻ chức năng
             Expanded(
               child: GridView.builder(
                 itemCount: featureCards.length,
-                gridDelegate:
-                const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16.w,
+                  mainAxisSpacing: 16.h,
                   childAspectRatio: 0.85,
                 ),
                 itemBuilder: (context, index) {
                   final card = featureCards[index];
                   return InkWell(
                     onTap: card["onTap"],
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(18.r),
                     splashColor: card["color"].withOpacity(0.2),
                     highlightColor: Colors.white.withOpacity(0.1),
                     child: Card(
                       elevation: 6,
                       shadowColor: card["color"].withOpacity(0.4),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(18.r),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.all(16.0),
+                        padding: EdgeInsets.all(12.w), // Giảm padding
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
+                            // Icon Section
                             Container(
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: card["color"].withOpacity(0.15),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: card["color"].withOpacity(0.5),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
                               ),
-                              padding: const EdgeInsets.all(16),
-                              child: card["icon"], // Icon giữ nguyên màu gốc
+                              padding: EdgeInsets.all(10.w), // Giảm padding
+                              child: card["icon"],
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: 8.h), // Giảm khoảng cách
+
+                            // Title
                             Text(
                               card["title"],
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                fontSize: 18,
+                                fontSize: 16.sp, // Giảm font size
                                 fontWeight: FontWeight.bold,
                                 color: (card["color"] as MaterialColor).shade700,
                               ),
                             ),
 
-                            // ✅ Thanh tiến trình chỉ cho "Lý thuyết"
+                            // Progress Bar (chỉ cho Lý thuyết)
                             if (card["title"] == "Lý thuyết") ...[
-                              const SizedBox(height: 12),
+                              SizedBox(height: 8.h), // Giảm khoảng cách
                               Obx(() {
                                 double progress =
                                 theoryController.getProgress(subject, grade);
@@ -214,15 +211,17 @@ class SubjectDetailScreen extends StatelessWidget {
                                   children: [
                                     LinearProgressIndicator(
                                       value: progress,
-                                      minHeight: 8,
+                                      minHeight: 6.h, // Giảm chiều cao
                                       backgroundColor:
                                       card["color"].withOpacity(0.2),
                                       color: card["color"],
                                     ),
-                                    const SizedBox(height: 4),
+                                    SizedBox(height: 4.h),
                                     Text(
-                                      "${(progress * 100).toStringAsFixed(0)}% Hoàn thành",
-                                      style: const TextStyle(fontSize: 12),
+                                      "${(progress * 100).toStringAsFixed(0)}%",
+                                      style: TextStyle(
+                                        fontSize: 10.sp, // Giảm font size
+                                      ),
                                     ),
                                   ],
                                 );

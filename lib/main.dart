@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:device_preview/device_preview.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'bindings/app_bindings.dart';
@@ -26,7 +29,13 @@ void main() async {
     initialRoute = isLoggedIn ? AppRoutes.main : AppRoutes.login;
   }
 
-  runApp(MyApp(initialRoute: initialRoute));
+  runApp(
+    DevicePreview(
+      // enabled: kDebugMode && !kIsWeb,
+      enabled: false,
+      builder: (context) => MyApp(initialRoute: initialRoute),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -36,12 +45,26 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(
-      initialBinding: AppBindings(),
-      debugShowCheckedModeBanner: false,
-      title: 'E-Learning App',
-      initialRoute: initialRoute,
-      getPages: AppPages.routes,
+    return ScreenUtilInit(
+      designSize: const Size(360, 800), // Galaxy A21s logical size
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (_, child) {
+        return GetMaterialApp(
+          useInheritedMediaQuery: true,
+          locale: DevicePreview.locale(context),
+          builder: DevicePreview.appBuilder,
+          initialBinding: AppBindings(),
+          debugShowCheckedModeBanner: false,
+          title: 'E-Learning App',
+          initialRoute: initialRoute,
+          getPages: AppPages.routes,
+          theme: ThemeData(
+            primaryColor: const Color(0xFF4CAF50),
+            fontFamily: 'Inter',
+          ),
+        );
+      },
     );
   }
 }

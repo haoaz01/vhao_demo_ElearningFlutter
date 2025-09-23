@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import '../app/routes/app_routes.dart';
 import '../controllers/theory_controller.dart';
@@ -6,11 +7,11 @@ import '../controllers/theory_controller.dart';
 class TheoryScreen extends StatelessWidget {
   final String subject;
   final int grade;
-  final String mode; // Thêm biến mode để xác định flow
+  final String mode;
   final Color primaryGreen = const Color(0xFF4CAF50);
 
   TheoryScreen({Key? key, required this.subject, required this.grade})
-      : mode = Get.arguments?['mode'] ?? 'theory', // Lấy mode từ arguments
+      : mode = Get.arguments?['mode'] ?? 'theory',
         super(key: key);
 
   @override
@@ -20,38 +21,62 @@ class TheoryScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(mode == 'theory'
-            ? "Lý thuyết $subject - Khối $grade"
-            : "Giải bài tập $subject - Khối $grade"),
+        title: Text(
+          mode == 'theory'
+              ? "Lý thuyết $subject - Khối $grade"
+              : "Giải bài tập $subject - Khối $grade",
+          style: TextStyle(fontSize: 16.sp),
+        ),
         backgroundColor: primaryGreen,
       ),
       body: Obx(() {
         if (theoryController.isLoading.value) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2.w,
+            ),
+          );
         }
+
+        if (theoryController.chapters.isEmpty) {
+          return Center(
+            child: Text(
+              "Chưa có dữ liệu cho môn học này",
+              style: TextStyle(fontSize: 16.sp),
+            ),
+          );
+        }
+
         return ListView.builder(
+          padding: EdgeInsets.all(12.w),
           itemCount: theoryController.chapters.length,
           itemBuilder: (context, index) {
             final chapter = theoryController.chapters[index];
             return Card(
-              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              margin: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
               elevation: 4,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               child: ExpansionTile(
                 leading: CircleAvatar(
                   backgroundColor: primaryGreen,
+                  radius: 20.r,
                   child: Text(
                     "${index + 1}",
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, color: Colors.white),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      fontSize: 14.sp,
+                    ),
                   ),
                 ),
                 title: Text(
                   chapter.title,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 16),
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16.sp
+                  ),
                 ),
                 children: List.generate(chapter.lessons.length, (lessonIndex) {
                   final lesson = chapter.lessons[lessonIndex];
@@ -63,32 +88,35 @@ class TheoryScreen extends StatelessWidget {
                   return ListTile(
                     leading: Hero(
                       tag: lesson.title,
-                      child: Icon(Icons.menu_book,
-                          color: isDone ? primaryGreen : Colors.blue),
+                      child: Icon(
+                        Icons.menu_book,
+                        size: 24.sp,
+                        color: isDone ? primaryGreen : Colors.blue,
+                      ),
                     ),
                     title: Text(
                       lesson.title,
                       style: TextStyle(
                         color: isDone ? primaryGreen : Colors.black87,
                         fontWeight: isDone ? FontWeight.bold : FontWeight.w500,
+                        fontSize: 14.sp,
                       ),
                     ),
                     trailing: Icon(
                       isDone ? Icons.check_circle : Icons.arrow_forward_ios,
+                      size: 20.sp,
                       color: isDone ? Colors.green : Colors.grey,
                     ),
                     onTap: () {
                       if (mode == 'theory') {
-                        // Flow lý thuyết: đi đến trang chi tiết bài học
                         Get.toNamed(
                           AppRoutes.lessonDetail,
                           arguments: {'lesson': lesson},
                         );
                       } else {
-                        // Flow giải bài tập: đi đến trang giải bài tập
                         Get.toNamed(
                           AppRoutes.solveExercisesDetail,
-                          arguments: {'lessonId': lesson.id}, // Chỉ truyền ID
+                          arguments: {'lessonId': lesson.id},
                         );
                       }
                     },

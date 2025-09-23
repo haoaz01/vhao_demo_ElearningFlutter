@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import '../app/routes/app_routes.dart';
 import '../controllers/auth_controller.dart';
@@ -115,7 +116,6 @@ class _QuizScreenState extends State<QuizScreen> {
         durationSeconds,
       );
 
-      // Sử dụng GetPage và truyền arguments
       Get.offNamed(
         AppRoutes.quizResult,
         arguments: {
@@ -148,12 +148,6 @@ class _QuizScreenState extends State<QuizScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    timer?.cancel();
-    super.dispose();
-  }
-
   // Widget để hiển thị danh sách nội dung (TEXT và IMAGE)
   Widget _buildContent(List<QuestionContent> contents) {
     return Column(
@@ -162,24 +156,30 @@ class _QuizScreenState extends State<QuizScreen> {
         if (content.contentType == "TEXT") {
           return InlineLatexText(
             text: content.contentValue,
-            fontSize: 17,
+            fontSize: 17.sp,
             fontWeight: FontWeight.w500,
           );
         } else if (content.contentType == "IMAGE") {
           return Container(
-            margin: const EdgeInsets.only(top: 8),
+            margin: EdgeInsets.only(top: 8.h),
             child: Image.network(
               content.contentValue,
               fit: BoxFit.contain,
               width: double.infinity,
-              height: 150, // Có thể điều chỉnh chiều cao
+              height: 150.h,
             ),
           );
         } else {
-          return const SizedBox(); // Trường hợp khác
+          return const SizedBox();
         }
       }).toList(),
     );
+  }
+
+  @override
+  void dispose() {
+    timer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -192,94 +192,135 @@ class _QuizScreenState extends State<QuizScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(setTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text(chapterName, style: const TextStyle(fontSize: 14)),
+            Text(
+              setTitle,
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp),
+            ),
+            Text(
+              chapterName,
+              style: TextStyle(fontSize: 12.sp),
+            ),
           ],
         ),
         actions: [
           Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            margin: EdgeInsets.only(right: 16.w),
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
             decoration: BoxDecoration(
               color: remainingSeconds <= 30 ? Colors.red : Colors.black54,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(20.r),
             ),
             child: Text(
               formatTime(remainingSeconds),
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 12.sp,
+              ),
             ),
           )
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           children: [
+            // Progress Indicator
             LinearProgressIndicator(
               value: (currentQuestion + 1) / questions.length,
               backgroundColor: Colors.grey.shade300,
               color: Colors.green,
-              minHeight: 10,
-              borderRadius: BorderRadius.circular(10),
+              minHeight: 10.h,
+              borderRadius: BorderRadius.circular(10.r),
             ),
-            const SizedBox(height: 20),
-            Text("Câu ${currentQuestion + 1}/${questions.length}",
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 12),
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              elevation: 4,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: _buildContent(currentQ.contents), // Sửa ở đây
+            SizedBox(height: 20.h),
+
+            // Question Counter
+            Text(
+              "Câu ${currentQuestion + 1}/${questions.length}",
+              style: TextStyle(
+                fontSize: 18.sp,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: ListView.builder(
-                itemCount: currentQ.choices.length,
-                itemBuilder: (context, index) {
-                  final choice = currentQ.choices[index];
-                  final selected = selectedAnswers[currentQuestion] == index;
+            SizedBox(height: 12.h),
 
-                  return GestureDetector(
-                    onTap: isSubmitted
-                        ? null
-                        : () => setState(() => selectedAnswers[currentQuestion] = index),
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: selected ? Colors.lightBlue.shade50 : Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: selected ? Colors.blue : Colors.grey.shade300,
-                          width: 2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.shade200,
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+            // Question Card với Expanded để có thể scroll
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    // Question Card
+                    Card(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16.r),
                       ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            selected ? Icons.check_circle : Icons.circle_outlined,
-                            color: selected ? Colors.blue : Colors.grey,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(child: InlineLatexText(text: choice.content, fontSize: 16)),
-                        ],
+                      elevation: 4,
+                      child: Padding(
+                        padding: EdgeInsets.all(16.w),
+                        child: _buildContent(currentQ.contents),
                       ),
                     ),
-                  );
-                },
+                    SizedBox(height: 16.h),
+
+                    // Choices List
+                    ListView.builder(
+                      shrinkWrap: true, // Quan trọng: cho phép ListView nằm trong ScrollView
+                      physics: const NeverScrollableScrollPhysics(), // Vô hiệu hóa scroll riêng
+                      itemCount: currentQ.choices.length,
+                      itemBuilder: (context, index) {
+                        final choice = currentQ.choices[index];
+                        final selected = selectedAnswers[currentQuestion] == index;
+
+                        return GestureDetector(
+                          onTap: isSubmitted
+                              ? null
+                              : () => setState(() => selectedAnswers[currentQuestion] = index),
+                          child: Container(
+                            margin: EdgeInsets.only(bottom: 12.h),
+                            padding: EdgeInsets.all(14.w),
+                            decoration: BoxDecoration(
+                              color: selected ? Colors.lightBlue.shade50 : Colors.white,
+                              borderRadius: BorderRadius.circular(12.r),
+                              border: Border.all(
+                                color: selected ? Colors.blue : Colors.grey.shade300,
+                                width: 2.w,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.grey.shade200,
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  selected ? Icons.check_circle : Icons.circle_outlined,
+                                  color: selected ? Colors.blue : Colors.grey,
+                                  size: 20.sp,
+                                ),
+                                SizedBox(width: 12.w),
+                                Expanded(
+                                  child: InlineLatexText(
+                                    text: choice.content,
+                                    fontSize: 16.sp,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10.h),
+
+            // Navigation Buttons
             Row(
               children: [
                 Expanded(
@@ -287,31 +328,39 @@ class _QuizScreenState extends State<QuizScreen> {
                     onPressed: currentQuestion > 0
                         ? () => setState(() => currentQuestion--)
                         : null,
-                    icon: const Icon(Icons.arrow_back),
-                    label: const Text("Trước"),
+                    icon: Icon(Icons.arrow_back, size: 18.sp),
+                    label: Text(
+                      "Trước",
+                      style: TextStyle(fontSize: 14.sp),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: EdgeInsets.symmetric(vertical: 14.h),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12.w),
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: currentQuestion < questions.length - 1
                         ? () => setState(() => currentQuestion++)
                         : null,
-                    icon: const Icon(Icons.arrow_forward),
-                    label: const Text("Tiếp"),
+                    icon: Icon(Icons.arrow_forward, size: 18.sp),
+                    label: Text(
+                      "Tiếp",
+                      style: TextStyle(fontSize: 14.sp),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: EdgeInsets.symmetric(vertical: 14.h),
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12.h),
+
+            // Submit Button
             ElevatedButton(
               onPressed: isSubmitted
                   ? null
@@ -330,11 +379,16 @@ class _QuizScreenState extends State<QuizScreen> {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: isSubmitted ? Colors.grey : Colors.green.shade600,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: EdgeInsets.symmetric(vertical: 16.h),
+                minimumSize: Size(double.infinity, 50.h),
               ),
               child: Text(
                 isSubmitted ? "Đã nộp bài" : "Nộp bài",
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
             ),
           ],

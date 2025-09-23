@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import '../controllers/practice_exam_controller.dart';
 import '../model/practice_exam_model.dart';
@@ -39,28 +40,37 @@ class _PracticeExamScreenState extends State<PracticeExamScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Bộ đề thi ${widget.subject} lớp ${widget.grade}"),
+        title: Text(
+          "Bộ đề thi ${widget.subject} lớp ${widget.grade}",
+          style: TextStyle(fontSize: 16.sp),
+        ),
         backgroundColor: Colors.purple,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(16.w),
         child: Obx(() {
           if (widget.practiceExamController.isLoading.value) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(
+              child: CircularProgressIndicator(strokeWidth: 2.w),
+            );
           }
 
           if (widget.practiceExamController.errorMessage.isNotEmpty) {
             return Center(
               child: Text(
                 widget.practiceExamController.errorMessage.value,
-                style: const TextStyle(color: Colors.red),
+                style: TextStyle(color: Colors.red, fontSize: 14.sp),
+                textAlign: TextAlign.center,
               ),
             );
           }
 
           if (widget.practiceExamController.exams.isEmpty) {
-            return const Center(
-              child: Text("Chưa có đề thi nào cho môn học này"),
+            return Center(
+              child: Text(
+                "Chưa có đề thi nào cho môn học này",
+                style: TextStyle(fontSize: 16.sp),
+              ),
             );
           }
 
@@ -78,18 +88,26 @@ class _PracticeExamScreenState extends State<PracticeExamScreen> {
 
   Widget _buildExamItem(PracticeExam exam, BuildContext context) {
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      margin: EdgeInsets.symmetric(vertical: 8.h),
       elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.r),
+      ),
       child: ListTile(
-        leading: const Icon(Icons.picture_as_pdf, color: Colors.red, size: 36),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+        leading: Icon(Icons.picture_as_pdf, color: Colors.red, size: 32.sp),
         title: Text(
           exam.description,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16.sp,
+          ),
         ),
         subtitle: Text(
           "Loại: ${_getExamTypeName(exam.examType)} - Ngày tải: ${_formatDate(exam.uploadDate)}",
+          style: TextStyle(fontSize: 12.sp),
         ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        trailing: Icon(Icons.arrow_forward_ios, size: 16.sp),
         onTap: () {
           Get.to(
                 () => PracticeExamDetailScreen(fileName: exam.fileName),
