@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_elearning_application/controllers/auth_controller.dart';
+import 'package:flutter_elearning_application/screens/search_screen.dart';
 import 'package:flutter_elearning_application/screens/subject_detail_screen.dart';
 import 'package:get/get.dart';
+
+import '../app/routes/app_routes.dart';
 
 class HomeScreen extends StatelessWidget {
   final AuthController authController = Get.find<AuthController>();
@@ -121,23 +124,29 @@ class HomeScreen extends StatelessWidget {
               children: [
                 // ===== Thanh tìm kiếm =====
                 Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: Colors.grey.shade200,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.search, color: Colors.grey),
+                      Image.asset(
+                        'assets/icon/icon_search.png',
+                        width: 22,
+                        height: 22,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: TextField(
                           decoration: const InputDecoration(
-                            hintText: "Tìm kiếm môn học...",
+                            hintText: "Tìm kiếm bài học...",
                             border: InputBorder.none,
                           ),
-                          onChanged: (value) {},
+                          readOnly: true,
+                          onTap: () {
+                            Get.toNamed(AppRoutes.search);
+                          },
                         ),
                       ),
                     ],
@@ -292,12 +301,14 @@ class HomeScreen extends StatelessWidget {
   }
 
   // ===== Card môn học responsive =====
-  // ===== Card môn học responsive (IconData hoặc Image từ assets) =====
   Widget _buildSubjectCard(String subject) {
     return GestureDetector(
       onTap: () {
         final grade = int.tryParse(authController.selectedClass.value) ?? 0;
-        Get.to(() => SubjectDetailScreen(grade: grade, subject: subject));
+        Get.toNamed(AppRoutes.subjectDetail, arguments: {
+          'grade': grade,
+          'subject': subject,
+        });
       },
       child: LayoutBuilder(
         builder: (context, constraints) {

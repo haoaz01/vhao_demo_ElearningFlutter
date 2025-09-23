@@ -1,18 +1,18 @@
-class ContentItem {
+class LessonContent {
   final int id;
   final String type;
   final String value;
   final int order;
 
-  ContentItem({
+  LessonContent({
     required this.id,
     required this.type,
     required this.value,
     required this.order,
   });
 
-  factory ContentItem.fromJson(Map<String, dynamic> json) {
-    return ContentItem(
+  factory LessonContent.fromJson(Map<String, dynamic> json) {
+    return LessonContent(
       id: json['id'] ?? 0,
       type: json['contentType'] ?? 'TEXT',
       value: json['contentValue'] ?? '',

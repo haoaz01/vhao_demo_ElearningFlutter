@@ -4,6 +4,7 @@ import 'package:flutter_elearning_application/screens/login_screen.dart';
 import 'package:flutter_elearning_application/screens/signup_screen.dart';
 import 'package:flutter_elearning_application/screens/welcome_screen.dart';
 
+import '../../controllers/practice_exam_controller.dart';
 import '../../screens/forgot_password_screen.dart';
 import '../../screens/lesson_detail_screen.dart';
 import '../../screens/practice_exam_detail_screen.dart';
@@ -13,6 +14,7 @@ import '../../screens/quiz_history_screen.dart';
 import '../../screens/quiz_result_screen.dart';
 import '../../screens/quiz_screen.dart';
 import '../../screens/reset_pass_screen.dart';
+import '../../screens/search_screen.dart';
 import '../../screens/solve_exercises_detail.dart';
 import '../../screens/subject_detail_screen.dart';
 import '../../screens/theory_screen.dart';
@@ -63,12 +65,11 @@ class AppPages {
       page: () {
         final args = Get.arguments ?? {};
         return PracticeExamScreen(
-          subject: args['subject'],
-          grade: args['grade'],
-          practiceExamController: args['controller'],
+          subject: args['subject']?.toString() ?? '',
+          grade: args['grade']?.toString() ?? '',
+          practiceExamController: args['controller'] ?? Get.put(PracticeExamController()), // ✅ fallback
         );
       },
-      transition: Transition.rightToLeft,
     ),
     GetPage(
       name: AppRoutes.practiceExamDetail,
@@ -129,6 +130,11 @@ class AppPages {
         final args = Get.arguments as Map<String, dynamic>;
         return QuizHistoryScreen(quizId: args['quizId']);
       },
+      transition: Transition.cupertino,
+    ),
+    GetPage(
+      name: AppRoutes.search,
+      page: () => SearchScreen(),
       transition: Transition.cupertino,
     ),
   ];

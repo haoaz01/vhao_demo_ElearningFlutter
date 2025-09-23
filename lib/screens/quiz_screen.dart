@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../app/routes/app_routes.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/quiz_controller.dart';
 import '../model/question_content_model.dart';
@@ -109,34 +110,41 @@ class _QuizScreenState extends State<QuizScreen> {
 
     try {
       final result = await quizController.submitQuiz(
-          quizId,
-          userAnswersForBackend,
-          durationSeconds
+        quizId,
+        userAnswersForBackend,
+        durationSeconds,
       );
 
-      Get.off(() => QuizResultScreen(
-        chapterName: chapterName,
-        setTitle: setTitle,
-        score: result.score,
-        correct: result.correctAnswers,
-        total: result.totalQuestions,
-        quizTypeId: quizTypeId,
-        attemptNo: result.attemptNo,
-        durationSeconds: result.durationSeconds,
-        quizId: quizId,
-      ));
+      // Sử dụng GetPage và truyền arguments
+      Get.offNamed(
+        AppRoutes.quizResult,
+        arguments: {
+          'chapterName': chapterName,
+          'setTitle': setTitle,
+          'score': result.score,
+          'correct': result.correctAnswers,
+          'total': result.totalQuestions,
+          'quizTypeId': quizTypeId,
+          'attemptNo': result.attemptNo,
+          'durationSeconds': result.durationSeconds,
+          'quizId': quizId,
+        },
+      );
     } catch (e) {
-      Get.off(() => QuizResultScreen(
-        chapterName: chapterName,
-        setTitle: setTitle,
-        score: score.toDouble(),
-        correct: correct,
-        total: questions.length,
-        quizTypeId: quizTypeId,
-        attemptNo: 1,
-        durationSeconds: durationSeconds,
-        quizId: quizId,
-      ));
+      Get.offNamed(
+        AppRoutes.quizResult,
+        arguments: {
+          'chapterName': chapterName,
+          'setTitle': setTitle,
+          'score': score.toDouble(),
+          'correct': correct,
+          'total': questions.length,
+          'quizTypeId': quizTypeId,
+          'attemptNo': 1,
+          'durationSeconds': durationSeconds,
+          'quizId': quizId,
+        },
+      );
     }
   }
 

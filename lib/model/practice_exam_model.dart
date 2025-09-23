@@ -3,7 +3,7 @@ class PracticeExam {
   final String fileName;
   final String description;
   final String subject;
-  final String grade;
+  final String grade;       // giữ String
   final String examType;
   final DateTime uploadDate;
 
@@ -20,12 +20,25 @@ class PracticeExam {
   factory PracticeExam.fromJson(Map<String, dynamic> json) {
     return PracticeExam(
       id: json['id'] ?? 0,
-      fileName: json['fileName'] ?? '', // ✅ đổi sang camelCase
+      fileName: json['fileName'] ?? '',
       description: json['description'] ?? '',
-      subject: json['subject'] ?? '',
-      grade: json['grade'] ?? '',
-      examType: json['examType'] ?? '', // ✅ đổi sang camelCase
-      uploadDate: DateTime.tryParse(json['uploadDate'] ?? '') ?? DateTime.now(), // ✅ đổi sang camelCase
+      subject: json['subject']?.toString() ?? '',
+      grade: json['grade']?.toString() ?? '',  // ✅ ép sang String
+      examType: json['examType']?.toString() ?? '',
+      uploadDate: DateTime.tryParse(json['uploadDate']?.toString() ?? '')
+          ?? DateTime.now(),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'fileName': fileName,
+      'description': description,
+      'subject': subject,
+      'grade': grade,
+      'examType': examType,
+      'uploadDate': uploadDate.toIso8601String(),
+    };
   }
 }

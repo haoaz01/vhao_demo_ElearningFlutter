@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'bindings/app_bindings.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/main_controller.dart';
 import 'app/routes/app_page.dart';
@@ -36,6 +37,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
+      initialBinding: AppBindings(),
       debugShowCheckedModeBanner: false,
       title: 'E-Learning App',
       initialRoute: initialRoute,

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_elearning_application/screens/practice_exam_screen.dart';
 import 'package:get/get.dart';
 import '../app/routes/app_routes.dart';
 import '../controllers/practice_exam_controller.dart';
@@ -28,7 +27,12 @@ class SubjectDetailScreen extends StatelessWidget {
     final List<Map<String, dynamic>> featureCards = [
       {
         "title": "Lý thuyết",
-        "icon": Icons.menu_book_rounded,
+        "icon": Image.asset(
+          "assets/icon/icon_theory.png",
+          width: 42,
+          height: 42,
+          // Đã xóa color: để giữ nguyên màu PNG gốc
+        ),
         "color": Colors.blue,
         "onTap": () {
           Get.toNamed(
@@ -36,14 +40,19 @@ class SubjectDetailScreen extends StatelessWidget {
             arguments: {
               'subject': subject,
               'grade': grade,
-              'mode': 'theory', // Thêm mode để phân biệt
+              'mode': 'theory',
             },
           );
         }
       },
       {
         "title": "Giải bài tập",
-        "icon": Icons.edit_document,
+        "icon": Image.asset(
+          "assets/icon/icon_solve_exercise.png",
+          width: 42,
+          height: 42,
+          // Đã xóa color: để giữ nguyên màu PNG gốc
+        ),
         "color": Colors.green,
         "onTap": () {
           Get.toNamed(
@@ -51,15 +60,19 @@ class SubjectDetailScreen extends StatelessWidget {
             arguments: {
               'subject': subject,
               'grade': grade,
-              'mode': 'exercise', // Thêm mode để phân biệt
+              'mode': 'exercise',
             },
           );
         }
       },
-// In your original screen where the Quiz card is
       {
         "title": "Quiz",
-        "icon": Icons.quiz_rounded,
+        "icon": Image.asset(
+          "assets/icon/icon_quiz.png",
+          width: 42,
+          height: 42,
+          // Đã xóa color: để giữ nguyên màu PNG gốc
+        ),
         "color": Colors.orange,
         "onTap": () async {
           try {
@@ -84,20 +97,25 @@ class SubjectDetailScreen extends StatelessWidget {
       },
       {
         "title": "Bộ đề thi",
-        "icon": Icons.article_rounded,
+        "icon": Image.asset(
+          "assets/icon/icon_exam.png",
+          width: 42,
+          height: 42,
+          // Đã xóa color: để giữ nguyên màu PNG gốc
+        ),
         "color": Colors.purple,
         "onTap": () {
           final tag = '${subject}_$grade';
-          Get.create<PracticeExamController>(() => PracticeExamController(), tag: tag);
-          final controller = Get.find<PracticeExamController>(tag: tag);
+          Get.create<PracticeExamController>(() => PracticeExamController(),
+              tag: tag);
+          Get.find<PracticeExamController>(tag: tag);
 
-          Get.to(
-                () => PracticeExamScreen(
-              subject: subject,
-              grade: grade.toString(),
-              practiceExamController: controller,
-            ),
-            transition: Transition.rightToLeft,
+          Get.toNamed(
+            AppRoutes.practiceExam,
+            arguments: {
+              'subject': subject,
+              'grade': grade,
+            },
           );
         }
       },
@@ -133,7 +151,8 @@ class SubjectDetailScreen extends StatelessWidget {
             Expanded(
               child: GridView.builder(
                 itemCount: featureCards.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate:
+                const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
@@ -171,11 +190,7 @@ class SubjectDetailScreen extends StatelessWidget {
                                 ],
                               ),
                               padding: const EdgeInsets.all(16),
-                              child: Icon(
-                                card["icon"],
-                                size: 38,
-                                color: card["color"],
-                              ),
+                              child: card["icon"], // Icon giữ nguyên màu gốc
                             ),
                             const SizedBox(height: 16),
                             Text(
@@ -184,7 +199,7 @@ class SubjectDetailScreen extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: card["color"].shade700,
+                                color: (card["color"] as MaterialColor).shade700,
                               ),
                             ),
 
@@ -192,7 +207,8 @@ class SubjectDetailScreen extends StatelessWidget {
                             if (card["title"] == "Lý thuyết") ...[
                               const SizedBox(height: 12),
                               Obx(() {
-                                double progress = theoryController.getProgress(subject, grade);
+                                double progress =
+                                theoryController.getProgress(subject, grade);
                                 return Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [

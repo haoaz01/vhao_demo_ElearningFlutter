@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
-import '../model/content_item_model.dart';
+import '../model/lesson_content_model.dart';
 import '../model/lesson_model.dart';
 import '../repositories/subject_repository.dart';
 import '../controllers/theory_controller.dart';
@@ -94,7 +94,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen>
     try {
       setState(() => _isLoading = true);
 
-      final List<ContentItem> contentItems = await repository.getLessonContents(widget.lesson.id);
+      final List<LessonContent> contentItems = await repository.getLessonContents(widget.lesson.id);
 
       setState(() {
         widget.lesson.contents = contentItems;
@@ -154,7 +154,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen>
     }
   }
 
-  Widget _buildContentItem(ContentItem item) {
+  Widget _buildContentItem(LessonContent item) {
     switch (item.type) {
       case 'TEXT':
         return Padding(

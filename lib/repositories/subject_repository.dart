@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import '../model/chapter_model.dart';
-import '../model/content_item_model.dart';
+import '../model/lesson_content_model.dart';
 import '../model/exercise_model.dart';
 import '../model/lesson_model.dart';
 
@@ -87,13 +87,13 @@ class SubjectRepository {
   }
 
   /// ✅ Lấy danh sách ContentItem của lesson
-  Future<List<ContentItem>> getLessonContents(int lessonId) async {
+  Future<List<LessonContent>> getLessonContents(int lessonId) async {
     try {
       final url = "$baseUrl/lessons/$lessonId/contents";
       final res = await _getWithRetry(url);
       final List<dynamic> jsonList = json.decode(res);
       final list = jsonList
-          .map((x) => ContentItem.fromJson(x))
+          .map((x) => LessonContent.fromJson(x))
           .toList()
         ..sort((a, b) => a.order.compareTo(b.order));
       return list;
