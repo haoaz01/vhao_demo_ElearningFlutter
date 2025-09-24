@@ -105,15 +105,13 @@ class QuizRepository {
       throw Exception("UserId not found. Please login again.");
     }
 
-    // Convert answers to use string keys (JSON requires string keys)
     Map<String, List<int>> answersWithStringKeys = {};
     userAnswers.forEach((key, value) {
       answersWithStringKeys[key.toString()] = value;
     });
 
-    // Create request body - send userId as number
     Map<String, dynamic> requestBody = {
-      'userId': userId, // Send as number, not string
+      'userId': userId,
       'answers': answersWithStringKeys,
       'durationSeconds': durationSeconds,
     };
@@ -121,33 +119,17 @@ class QuizRepository {
     final uri = Uri.parse("$baseUrl/$quizId/submit");
     final jsonBody = jsonEncode(requestBody);
 
-    // 👉 Log chi tiết trước khi gửi
-    print("📤 [POST QUIZ RESULT]");
-    print("➡️ URL: $uri");
-    print("➡️ Headers: {Content-Type: application/json}");
-    print("➡️ userId: $userId");
-    print("➡️ quizId: $quizId");
-    print("➡️ durationSeconds: $durationSeconds");
-    print("➡️ answers count: ${userAnswers.length}");
-    print("➡️ Body JSON: $jsonBody");
-
     final response = await http.post(
       uri,
       headers: {"Content-Type": "application/json"},
       body: jsonBody,
     );
 
-    // 👉 Log chi tiết sau khi gửi
-    print("📥 [RESPONSE]");
-    print("⬅️ Status: ${response.statusCode}");
-    print("⬅️ Body: ${response.body}");
-
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       return QuizResult.fromJson(data);
     } else {
-      throw Exception(
-          "Failed to submit quiz. Status: ${response.statusCode}, Body: ${response.body}");
+      throw Exception("Failed to submit quiz. Status: ${response.statusCode}, Body: ${response.body}");
     }
   }
 
@@ -160,16 +142,11 @@ class QuizRepository {
     }
   }
 
-  // Add this method to your QuizRepository class
   Future<List<QuizHistory>> getQuizHistory(int quizId, int userId) async {
     final prefs = await SharedPreferences.getInstance();
     final authToken = prefs.getString('authToken');
 
     final uri = Uri.parse("$baseUrl/$quizId/users/$userId/history");
-
-    print("📤 [GET QUIZ HISTORY]");
-    print("➡️ URL: $uri");
-    print("➡️ Headers: {Authorization: Bearer $authToken}");
 
     final response = await http.get(
       uri,
@@ -179,15 +156,24 @@ class QuizRepository {
       },
     );
 
-    print("📥 [RESPONSE]");
-    print("⬅️ Status: ${response.statusCode}");
-    print("⬅️ Body: ${response.body}");
-
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       return data.map((json) => QuizHistory.fromJson(json)).toList();
     } else {
       throw Exception("Failed to load quiz history. Status: ${response.statusCode}, Body: ${response.body}");
+    }
+  }
+
+  /// 🔹 Lấy danh sách subject theo grade
+  Future<List<Map<String, dynamic>>> getSubjectsByGrade(int gradeId) async {
+    final uri = Uri.parse("$baseUrl/grades/$gradeId/subjects");
+    final response = await http.get(uri);
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((e) => e as Map<String, dynamic>).toList();
+    } else {
+      throw Exception("Failed to load subjects for grade $gradeId");
     }
   }
 }

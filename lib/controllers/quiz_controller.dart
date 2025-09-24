@@ -24,6 +24,9 @@ class QuizController extends GetxController {
   var quizHistory = <QuizHistory>[].obs;
   var isHistoryLoading = false.obs;
 
+  /// Subject mapping theo grade
+  final subjectMapping = <int, List<Map<String, dynamic>>>{}.obs;
+
   @override
   void onInit() {
     super.onInit();
@@ -102,7 +105,6 @@ class QuizController extends GetxController {
     try {
       final result = await quizRepository.submitQuiz(quizId, userAnswers, durationSeconds);
       lastResult.value = result;
-      print("✅ Quiz submitted. Score: ${result.score}, Attempt: ${result.attemptNo}");
       return result;
     } catch (e) {
       print("❌ Error submitting quiz: $e");
@@ -117,13 +119,19 @@ class QuizController extends GetxController {
   Future<void> loadQuiz(String subject, int grade) async {
     try {
       isLoading.value = true;
-      int subjectId = _convertSubjectToId(subject);
-      print('Loading quiz for subject: $subject (ID: $subjectId), grade: $grade');
+
+      // 🔹 Lấy subjectId động từ API
+      final subjectId = await _getSubjectIdByGradeAndName(grade, subject);
+
+      if (subjectId == null) {
+        Get.snackbar("Thông báo", "Không tìm thấy môn $subject cho lớp $grade");
+        chapters.value = [];
+        return;
+      }
 
       final data = await quizRepository.getQuizzesBySubjectAndGrade(grade, subjectId);
 
       if (data.isEmpty) {
-        print('No quizzes found for the given criteria');
         chapters.value = [];
         Get.snackbar("Thông báo", "Không có quiz nào cho môn học này");
         return;
@@ -132,9 +140,7 @@ class QuizController extends GetxController {
       Map<String, List<Quiz>> chapterMap = {};
       for (var quiz in data) {
         String chapterName = quiz.chapterTitle ?? "Chương không xác định";
-        if (!chapterMap.containsKey(chapterName)) {
-          chapterMap[chapterName] = [];
-        }
+        chapterMap.putIfAbsent(chapterName, () => []);
         chapterMap[chapterName]!.add(quiz);
       }
 
@@ -144,19 +150,13 @@ class QuizController extends GetxController {
           "sets": entry.value.map((quiz) {
             return {
               "title": quiz.code,
-              "questions": quiz.questions.map((q) {
-                // Chuyển đổi nội dung cũ sang contents (TEXT + IMAGE)
-                return q;
-              }).toList(),
+              "questions": quiz.questions,
               "quiz": quiz,
             };
           }).toList(),
         };
       }).toList();
-
-      print('✅ Successfully loaded ${chapters.length} chapters');
     } catch (e) {
-      print('❌ Error loading quiz: $e');
       Get.snackbar("Lỗi", "Không tải được quiz: ${e.toString()}");
       chapters.value = [];
     } finally {
@@ -200,7 +200,6 @@ class QuizController extends GetxController {
       final history = await quizRepository.getQuizHistory(quizId, userId);
       quizHistory.assignAll(history);
     } catch (e) {
-      print("❌ Error fetching quiz history: $e");
       Get.snackbar(
         "Lỗi",
         "Không thể tải lịch sử làm bài: ${e.toString()}",
@@ -213,18 +212,19 @@ class QuizController extends GetxController {
     }
   }
 
-  int _convertSubjectToId(String subject) {
-    switch (subject.toLowerCase()) {
-      case 'toan':
-        return 1;
-      case 'nguvan':
-        return 2;
-      case 'tienganh':
-        return 3;
-      case 'khoahoctunhien':
-        return 4;
-      default:
-        return 1;
+  /// 🔹 Tìm subjectId dựa vào grade + subjectName
+  Future<int?> _getSubjectIdByGradeAndName(int gradeId, String subjectName) async {
+    // Nếu chưa cache → gọi API
+    if (!subjectMapping.containsKey(gradeId)) {
+      final subjects = await quizRepository.getSubjectsByGrade(gradeId);
+      subjectMapping[gradeId] = subjects;
     }
+
+    final subjects = subjectMapping[gradeId]!;
+    final subject = subjects.firstWhereOrNull(
+          (s) => (s['name'] as String).toLowerCase() == subjectName.toLowerCase(),
+    );
+
+    return subject?['id'];
   }
 }

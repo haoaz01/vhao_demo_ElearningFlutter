@@ -9,7 +9,6 @@ class PracticeExamScreen extends StatefulWidget {
   final String subject;
   final String grade;
   final PracticeExamController practiceExamController;
-
   const PracticeExamScreen({
     Key? key,
     required this.subject,
@@ -22,6 +21,7 @@ class PracticeExamScreen extends StatefulWidget {
 }
 
 class _PracticeExamScreenState extends State<PracticeExamScreen> {
+  final Color primaryGreen = const Color(0xFF4CAF50);
   @override
   void initState() {
     super.initState();
@@ -44,7 +44,7 @@ class _PracticeExamScreenState extends State<PracticeExamScreen> {
           "Bộ đề thi ${widget.subject} lớp ${widget.grade}",
           style: TextStyle(fontSize: 16.sp),
         ),
-        backgroundColor: Colors.purple,
+        backgroundColor: primaryGreen,
       ),
       body: Padding(
         padding: EdgeInsets.all(16.w),

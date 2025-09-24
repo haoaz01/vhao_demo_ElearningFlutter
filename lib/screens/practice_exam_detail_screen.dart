@@ -5,6 +5,7 @@ import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../controllers/pdf_controller.dart';
 
 class PracticeExamDetailScreen extends StatelessWidget {
+  final Color primaryGreen = const Color(0xFF4CAF50);
   final String fileName;
 
   PracticeExamDetailScreen({Key? key, required this.fileName}) : super(key: key);
@@ -19,7 +20,7 @@ class PracticeExamDetailScreen extends StatelessWidget {
           fileName,
           style: TextStyle(fontSize: 16.sp),
         ),
-        backgroundColor: Colors.purple,
+        backgroundColor: primaryGreen,
         actions: [
           IconButton(
             icon: Icon(Icons.refresh, size: 24.sp),
