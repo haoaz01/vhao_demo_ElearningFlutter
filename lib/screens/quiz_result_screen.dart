@@ -38,15 +38,15 @@ class QuizResultScreen extends StatelessWidget {
   }
 
   Color getScoreColor() {
-    if (score >= 8) return Colors.green.shade700;
-    if (score >= 5) return Colors.orange;
+    if (score >= 8) return Colors.orange;
+    if (score >= 5) return Colors.green.shade700;
     return Colors.red;
   }
 
-  IconData getScoreIcon() {
-    if (score >= 8) return Icons.emoji_events;
-    if (score >= 5) return Icons.check_circle;
-    return Icons.error;
+  String getScoreIconPath() {
+    if (score >= 8) return "assets/icon/icon_trophycup.png";
+    if (score >= 5) return "assets/icon/icon_check.png";
+    return "assets/icon/icon_error.png";
   }
 
   String getScoreText() {
@@ -60,8 +60,8 @@ class QuizResultScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-            "Kết quả Quiz",
-            style: TextStyle(color: Colors.white, fontSize: 16.sp)
+          "Kết quả Quiz",
+          style: TextStyle(color: Colors.white, fontSize: 16.sp),
         ),
         backgroundColor: Colors.green.shade700,
         elevation: 0,
@@ -107,10 +107,12 @@ class QuizResultScreen extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      getScoreIcon(),
-                      size: 40.sp,
-                      color: getScoreColor(),
+                    // 🔹 Icon từ asset
+                    Image.asset(
+                      getScoreIconPath(),
+                      width: 40.w,
+                      height: 40.w,
+                      fit: BoxFit.contain,
                     ),
                     SizedBox(height: 8.h),
                     Text(
@@ -119,13 +121,6 @@ class QuizResultScreen extends StatelessWidget {
                         fontSize: 32.sp,
                         fontWeight: FontWeight.bold,
                         color: getScoreColor(),
-                      ),
-                    ),
-                    Text(
-                      "/10",
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        color: Colors.grey.shade600,
                       ),
                     ),
                   ],
@@ -170,7 +165,8 @@ class QuizResultScreen extends StatelessWidget {
                     children: [
                       _buildResultRow("Số câu đúng", "$correct/$total"),
                       Divider(height: 20.h),
-                      _buildResultRow("Thời gian hoàn thành", formatDuration(durationSeconds)),
+                      _buildResultRow(
+                          "Thời gian hoàn thành", formatDuration(durationSeconds)),
                       Divider(height: 20.h),
                       _buildResultRow("Lần thử", "$attemptNo"),
                       Divider(height: 20.h),
@@ -193,7 +189,8 @@ class QuizResultScreen extends StatelessWidget {
                 height: 50.h,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    Get.toNamed(AppRoutes.quizHistory, arguments: {'quizId': quizId});
+                    Get.toNamed(AppRoutes.quizHistory,
+                        arguments: {'quizId': quizId});
                   },
                   icon: Icon(Icons.history, size: 20.sp),
                   label: Text(

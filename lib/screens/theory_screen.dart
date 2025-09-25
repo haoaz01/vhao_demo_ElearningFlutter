@@ -107,14 +107,17 @@ class TheoryScreen extends StatelessWidget {
                       size: 20.sp,
                       color: isDone ? Colors.green : Colors.grey,
                     ),
-                    onTap: () {
+                    onTap: () async {
                       if (mode == 'theory') {
-                        Get.toNamed(
+                        final result = await Get.toNamed(
                           AppRoutes.lessonDetail,
                           arguments: {'lesson': lesson},
                         );
+                        if (result == true) {
+                          theoryController.loadTheory(subject, grade);
+                        }
                       } else {
-                        Get.toNamed(
+                        await Get.toNamed(
                           AppRoutes.solveExercisesDetail,
                           arguments: {'lessonId': lesson.id},
                         );

@@ -23,6 +23,8 @@ class QuizController extends GetxController {
   var quizResults = <String, Map<String, dynamic>>{}.obs;
   var quizHistory = <QuizHistory>[].obs;
   var isHistoryLoading = false.obs;
+  var bestScore = <String, Map<String, dynamic>>{}.obs;
+  var isBestScoreLoading = false.obs;
 
   /// Subject mapping theo grade
   final subjectMapping = <int, List<Map<String, dynamic>>>{}.obs;
@@ -156,6 +158,26 @@ class QuizController extends GetxController {
           }).toList(),
         };
       }).toList();
+
+      // 🔹 TỰ ĐỘNG LOAD BEST SCORES CHO TẤT CẢ QUIZ
+      final authController = Get.find<AuthController>();
+      final userId = authController.userId.value;
+
+      if (userId > 0) {
+        // Lấy tất cả quizIds từ chapters
+        List<int> quizIds = [];
+        for (var chapter in chapters) {
+          for (var set in chapter["sets"]) {
+            quizIds.add(set["quiz"].id);
+          }
+        }
+
+        // Load best scores cho tất cả quiz (song song)
+        await Future.wait(
+            quizIds.map((quizId) => fetchBestScoreForUser(quizId, userId))
+        );
+      }
+
     } catch (e) {
       Get.snackbar("Lỗi", "Không tải được quiz: ${e.toString()}");
       chapters.value = [];
@@ -226,5 +248,130 @@ class QuizController extends GetxController {
     );
 
     return subject?['id'];
+  }
+
+  Future<void> fetchBestScoreForUser(int quizId, int userId) async {
+    try {
+      isBestScoreLoading.value = true;
+
+      final data = await quizRepository.getBestScoreForUser(quizId, userId);
+
+      if (data.isNotEmpty) {
+        bestScore["$quizId-$userId"] = data;
+      } else {
+        bestScore.remove("$quizId-$userId");
+      }
+    } catch (e) {
+      print("❌ Error fetching best score: $e");
+      Get.snackbar(
+        "Lỗi",
+        "Không thể tải điểm cao nhất",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      isBestScoreLoading.value = false;
+    }
+  }
+
+  /// 🔹 NEW: Lấy điểm cao nhất (auto-detect userId từ AuthController)
+  Future<void> fetchBestScore(int quizId) async {
+    final authController = Get.find<AuthController>();
+    final userId = authController.userId.value;
+
+    if (userId == 0) {
+      throw Exception("User not logged in");
+    }
+
+    await fetchBestScoreForUser(quizId, userId);
+  }
+
+  /// 🔹 NEW: Kiểm tra xem đã có best score chưa
+  bool hasBestScore(int quizId, int userId) {
+    return bestScore.containsKey("$quizId-$userId");
+  }
+
+  /// 🔹 NEW: Lấy best score dưới dạng số
+  double getBestScoreValue(int quizId, int userId) {
+    final data = bestScore["$quizId-$userId"];
+    if (data != null && data.containsKey('bestScore')) {
+      return (data['bestScore'] as num).toDouble();
+    }
+    return 0.0;
+  }
+
+  /// 🔹 NEW: Lấy số câu đúng cao nhất
+  int getBestCorrectAnswers(int quizId, int userId) {
+    final data = bestScore["$quizId-$userId"];
+    if (data != null && data.containsKey('bestCorrectAnswers')) {
+      return data['bestCorrectAnswers'] as int;
+    }
+    return 0;
+  }
+
+  /// 🔹 NEW: Kiểm tra đã vượt qua quiz chưa (điểm >= 5.0)
+  bool isQuizPassed(int quizId, int userId) {
+    final data = bestScore["$quizId-$userId"];
+    if (data != null && data.containsKey('passed')) {
+      return data['passed'] as bool;
+    }
+    return false;
+  }
+
+  /// 🔹 NEW: Cập nhật best score sau khi submit quiz thành công
+  void updateBestScoreAfterSubmit(int quizId, int userId, double newScore, int newCorrectAnswers) {
+    final currentBestScore = getBestScoreValue(quizId, userId);
+    final currentBestCorrect = getBestCorrectAnswers(quizId, userId);
+
+    // Nếu điểm mới cao hơn, hoặc bằng điểm nhưng số câu đúng cao hơn
+    if (newScore > currentBestScore ||
+        (newScore == currentBestScore && newCorrectAnswers > currentBestCorrect)) {
+
+      bestScore["$quizId-$userId"] = {
+        'bestScore': newScore,
+        'bestCorrectAnswers': newCorrectAnswers,
+        'passed': newScore >= 5.0,
+        'updatedAt': DateTime.now().toString(),
+      };
+    }
+  }
+
+  /// 🔹 Lấy best score cho một quiz cụ thể (auto-detect user)
+  Future<void> loadBestScoreForQuiz(int quizId) async {
+    final authController = Get.find<AuthController>();
+    final userId = authController.userId.value;
+
+    if (userId > 0) {
+      await fetchBestScoreForUser(quizId, userId);
+    }
+  }
+
+  /// 🔹 Kiểm tra xem quiz có best score không
+  bool hasBestScoreForQuiz(int quizId) {
+    final authController = Get.find<AuthController>();
+    final userId = authController.userId.value;
+    return userId > 0 && hasBestScore(quizId, userId);
+  }
+
+  /// 🔹 Lấy giá trị best score
+  double getBestScoreForQuiz(int quizId) {
+    final authController = Get.find<AuthController>();
+    final userId = authController.userId.value;
+    return userId > 0 ? getBestScoreValue(quizId, userId) : 0.0;
+  }
+
+  /// 🔹 Lấy số câu đúng cao nhất
+  int getBestCorrectForQuiz(int quizId) {
+    final authController = Get.find<AuthController>();
+    final userId = authController.userId.value;
+    return userId > 0 ? getBestCorrectAnswers(quizId, userId) : 0;
+  }
+
+  /// 🔹 Kiểm tra đã vượt qua quiz
+  bool isQuizPassedBest(int quizId) {
+    final authController = Get.find<AuthController>();
+    final userId = authController.userId.value;
+    return userId > 0 ? isQuizPassed(quizId, userId) : false;
   }
 }

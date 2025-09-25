@@ -29,6 +29,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen>
   bool _isYoutube = false;
   late AnimationController _animController;
   bool _isCompleted = false;
+  bool _updated = false; // ✅ theo dõi có thay đổi hay không
 
   @override
   void initState() {
@@ -56,10 +57,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen>
   Future<void> _initializePlayer() async {
     final videoUrl = widget.lesson.videoUrl;
 
-    print("Initializing video player with URL: $videoUrl");
-
     if (videoUrl.isEmpty) {
-      print("Video URL is empty");
       return;
     }
 
@@ -98,7 +96,6 @@ class _LessonDetailScreenState extends State<LessonDetailScreen>
         _isLoading = false;
       });
     } catch (e) {
-      print("Error loading lesson contents: $e");
       setState(() => _isLoading = false);
     }
   }
@@ -230,6 +227,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen>
         theoryController.grade,
         widget.lesson.title,
       );
+      _updated = true; // ✅ đánh dấu đã thay đổi
     });
   }
 
@@ -237,72 +235,75 @@ class _LessonDetailScreenState extends State<LessonDetailScreen>
   Widget build(BuildContext context) {
     final primaryGreen = const Color(0xFF4CAF50);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.lesson.title,
-          style: TextStyle(fontSize: 16.sp),
+    return WillPopScope(
+      onWillPop: () async {
+        Get.back(result: _updated); // ✅ trả về kết quả khi back
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            widget.lesson.title,
+            style: TextStyle(fontSize: 16.sp),
+          ),
+          backgroundColor: primaryGreen,
         ),
-        backgroundColor: primaryGreen,
-      ),
-      body: _isLoading
-          ? Center(
-        child: CircularProgressIndicator(strokeWidth: 2.w),
-      )
-          : SingleChildScrollView(
-        padding: EdgeInsets.all(16.w),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Hero(
-              tag: widget.lesson.title,
-              child: Material(
-                color: Colors.transparent,
-                child: Text(
-                  widget.lesson.title,
-                  style: TextStyle(
-                    fontSize: 22.sp,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: 20.h),
-
-            // Video Player
-            if (widget.lesson.videoUrl.isNotEmpty) _buildVideoPlayer(),
-            if (widget.lesson.videoUrl.isNotEmpty) SizedBox(height: 20.h),
-
-            // Lesson Contents
-            ...widget.lesson.contents.map(_buildContentItem).toList(),
-            SizedBox(height: 24.h),
-
-            // Completion Button
-            Center(
-              child: ScaleTransition(
-                scale: _animController,
-                child: ElevatedButton.icon(
-                  onPressed: _isCompleted ? null : _toggleCompletion,
-                  icon: Icon(
-                    _isCompleted ? Icons.check_circle : Icons.done_all_outlined,
-                    size: 20.sp,
-                  ),
-                  label: Text(
-                    _isCompleted ? "Đã hoàn thành" : "Đánh dấu hoàn thành",
-                    style: TextStyle(fontSize: 14.sp),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _isCompleted ? Colors.green : primaryGreen,
-                    padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 14.h),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30.r),
+        body: _isLoading
+            ? Center(
+          child: CircularProgressIndicator(strokeWidth: 2.w),
+        )
+            : SingleChildScrollView(
+          padding: EdgeInsets.all(16.w),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Hero(
+                tag: widget.lesson.title,
+                child: Material(
+                  color: Colors.transparent,
+                  child: Text(
+                    widget.lesson.title,
+                    style: TextStyle(
+                      fontSize: 22.sp,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
               ),
-            ),
-            SizedBox(height: 40.h),
-          ],
+              SizedBox(height: 20.h),
+
+              if (widget.lesson.videoUrl.isNotEmpty) _buildVideoPlayer(),
+              if (widget.lesson.videoUrl.isNotEmpty) SizedBox(height: 20.h),
+
+              ...widget.lesson.contents.map(_buildContentItem).toList(),
+              SizedBox(height: 24.h),
+
+              Center(
+                child: ScaleTransition(
+                  scale: _animController,
+                  child: ElevatedButton.icon(
+                    onPressed: _isCompleted ? null : _toggleCompletion,
+                    icon: Icon(
+                      _isCompleted ? Icons.check_circle : Icons.done_all_outlined,
+                      size: 20.sp,
+                    ),
+                    label: Text(
+                      _isCompleted ? "Đã hoàn thành" : "Đánh dấu hoàn thành",
+                      style: TextStyle(fontSize: 14.sp),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _isCompleted ? Colors.green : primaryGreen,
+                      padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 14.h),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30.r),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 40.h),
+            ],
+          ),
         ),
       ),
     );

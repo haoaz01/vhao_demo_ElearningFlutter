@@ -176,4 +176,28 @@ class QuizRepository {
       throw Exception("Failed to load subjects for grade $gradeId");
     }
   }
+
+  Future<Map<String, dynamic>> getBestScoreForUser(int quizId, int userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final authToken = prefs.getString('authToken');
+
+    final uri = Uri.parse("$baseUrl/$quizId/users/$userId/best-score");
+
+    final response = await http.get(
+      uri,
+      headers: {
+        "Content-Type": "application/json",
+        if (authToken != null && authToken.isNotEmpty) "Authorization": "Bearer $authToken",
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else if (response.statusCode == 404) {
+      // Trả về null nếu không có kết quả
+      return {};
+    } else {
+      throw Exception("Failed to load best score. Status: ${response.statusCode}, Body: ${response.body}");
+    }
+  }
 }
