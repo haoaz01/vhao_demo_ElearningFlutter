@@ -105,8 +105,18 @@ class QuizController extends GetxController {
 
   Future<QuizResult> submitQuiz(int quizId, Map<int, List<int>> userAnswers, int durationSeconds) async {
     try {
+      // 🔥 KIỂM TRA TRẠNG THÁI ĐĂNG NHẬP TRƯỚC KHI GỬI REQUEST
+      final authController = Get.find<AuthController>();
+      authController.checkAuthStatus();
+
+      if (!authController.isLoggedIn.value || authController.authToken.value.isEmpty) {
+        throw Exception("User not authenticated. Please login again.");
+      }
+
       final result = await quizRepository.submitQuiz(quizId, userAnswers, durationSeconds);
       lastResult.value = result;
+
+      print("✅ Quiz submitted successfully: ${result.score}");
       return result;
     } catch (e) {
       print("❌ Error submitting quiz: $e");

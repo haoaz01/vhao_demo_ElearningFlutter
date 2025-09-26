@@ -5,6 +5,7 @@ import 'package:flutter_elearning_application/screens/signup_screen.dart';
 import 'package:flutter_elearning_application/screens/welcome_screen.dart';
 
 import '../../controllers/practice_exam_controller.dart';
+import '../../middlewares/role_middleware.dart';
 import '../../screens/forgot_password_screen.dart';
 import '../../screens/lesson_detail_screen.dart';
 import '../../screens/practice_exam_detail_screen.dart';
@@ -25,21 +26,22 @@ class AppPages {
     GetPage(name: AppRoutes.welcome, page: () => WelcomeScreen()),
     GetPage(name: AppRoutes.signup, page: () => SignupScreen()),
     GetPage(name: AppRoutes.login, page: () => LoginScreen()),
-    GetPage(name: AppRoutes.main, page: () => MainScreen()),
-    GetPage(name: AppRoutes.forgotPassword, page: () => ForgotPasswordScreen()),
     GetPage(
-      name: AppRoutes.resetPassword,
-      page: () => ResetPasswordScreen(),
+      name: AppRoutes.main,
+      page: () => MainScreen(),
+      middlewares: [RoleMiddleware('USER')], // 👈 Bảo vệ route chính cho USER
     ),
+    GetPage(name: AppRoutes.forgotPassword, page: () => ForgotPasswordScreen()),
+    GetPage(name: AppRoutes.resetPassword, page: () => ResetPasswordScreen()),
+
     GetPage(
       name: AppRoutes.subjectDetail,
       page: () => SubjectDetailScreen(
         grade: Get.arguments['grade'],
         subject: Get.arguments['subject'],
       ),
-      transition: Transition.rightToLeftWithFade,
+      middlewares: [RoleMiddleware('USER')],
     ),
-
     GetPage(
       name: AppRoutes.theory,
       page: () {
@@ -49,7 +51,7 @@ class AppPages {
           grade: args['grade'] ?? 6,
         );
       },
-      transition: Transition.fadeIn,
+      middlewares: [RoleMiddleware('USER')],
     ),
     GetPage(
       name: AppRoutes.lessonDetail,
@@ -58,7 +60,7 @@ class AppPages {
         final lesson = args['lesson'];
         return LessonDetailScreen(lesson: lesson);
       },
-      transition: Transition.cupertino,
+      middlewares: [RoleMiddleware('USER')],
     ),
     GetPage(
       name: AppRoutes.practiceExam,
@@ -67,19 +69,18 @@ class AppPages {
         return PracticeExamScreen(
           subject: args['subject']?.toString() ?? '',
           grade: args['grade']?.toString() ?? '',
-          practiceExamController: args['controller'] ?? Get.put(PracticeExamController()), // ✅ fallback
+          practiceExamController: args['controller'] ?? Get.put(PracticeExamController()),
         );
       },
+      middlewares: [RoleMiddleware('USER')],
     ),
     GetPage(
       name: AppRoutes.practiceExamDetail,
       page: () {
         final args = Get.arguments ?? {};
-        return PracticeExamDetailScreen(
-          fileName: args['fileName'],
-        );
+        return PracticeExamDetailScreen(fileName: args['fileName']);
       },
-      transition: Transition.cupertino,
+      middlewares: [RoleMiddleware('USER')],
     ),
     GetPage(
       name: AppRoutes.solveExercisesDetail,
@@ -88,8 +89,8 @@ class AppPages {
         final lessonId = arguments['lessonId'];
         return SolveExercisesDetailScreen(lessonId: lessonId);
       },
+      middlewares: [RoleMiddleware('USER')],
     ),
-
     GetPage(
       name: AppRoutes.quizDetail,
       page: () {
@@ -99,12 +100,12 @@ class AppPages {
           grade: args['grade'],
         );
       },
-      transition: Transition.cupertino,
+      middlewares: [RoleMiddleware('USER')],
     ),
     GetPage(
       name: AppRoutes.quiz,
       page: () => const QuizScreen(),
-      transition: Transition.cupertino,
+      middlewares: [RoleMiddleware('USER')],
     ),
     GetPage(
       name: AppRoutes.quizResult,
@@ -119,10 +120,10 @@ class AppPages {
           quizTypeId: args['quizTypeId'] ?? 0,
           attemptNo: args['attemptNo'] ?? 1,
           durationSeconds: args['durationSeconds'] ?? 0,
-          quizId: args['quizId'] ?? 0, // Add this line
+          quizId: args['quizId'] ?? 0,
         );
       },
-      transition: Transition.cupertino,
+      middlewares: [RoleMiddleware('USER')],
     ),
     GetPage(
       name: AppRoutes.quizHistory,
@@ -130,12 +131,12 @@ class AppPages {
         final args = Get.arguments as Map<String, dynamic>;
         return QuizHistoryScreen(quizId: args['quizId']);
       },
-      transition: Transition.cupertino,
+      middlewares: [RoleMiddleware('USER')],
     ),
     GetPage(
       name: AppRoutes.search,
       page: () => SearchScreen(),
-      transition: Transition.cupertino,
+      middlewares: [RoleMiddleware('USER')],
     ),
   ];
 }

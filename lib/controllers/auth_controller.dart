@@ -19,6 +19,7 @@ class AuthController extends GetxController {
   var username = ''.obs;
   var authToken = ''.obs;
   var userId = 0.obs;
+  var role = 'USER'.obs; // 👈 thêm role (mặc định USER)
 
   var classes = ["6", "7", "8", "9"].obs;
   var selectedClass = "".obs;
@@ -42,10 +43,11 @@ class AuthController extends GetxController {
     email.value = prefs.getString('email') ?? '';
     username.value = prefs.getString('username') ?? 'Người dùng';
     userId.value = prefs.getInt('userId') ?? 0;
+    role.value = prefs.getString('role') ?? 'USER'; // 👈 load role từ prefs
     selectedClass.value = prefs.getString('selectedClass') ?? '';
     isClassSelected.value = selectedClass.value.isNotEmpty;
 
-    print("🔑 Load userId from prefs: ${userId.value}");
+    print("🔑 Load userId from prefs: ${userId.value}, role: ${role.value}");
 
     if (isLoggedIn.value) {
       updateSubjects();
@@ -83,19 +85,31 @@ class AuthController extends GetxController {
       final response = await AuthRepository.register(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
-        username: usernameController.text.trim(), // Thêm username
+        username: usernameController.text.trim(),
       );
 
       isLoading.value = false;
 
       if (response['success'] == true) {
-        // Lưu thông tin user từ response, bao gồm ID
+        // 🔥 QUAN TRỌNG: Lưu token và thông tin user sau khi đăng ký
         if (response['user'] != null) {
           final userData = response['user'];
           final prefs = await SharedPreferences.getInstance();
+
           await prefs.setInt('userId', userData['id']);
+          await prefs.setString('authToken', response['token'] ?? ''); // THÊM DÒNG NÀY
+          await prefs.setBool('isLoggedIn', true); // THÊM DÒNG NÀY
+          await prefs.setString('username', userData['username'] ?? '');
+          await prefs.setString('email', emailController.text.trim());
+          await prefs.setString('role', 'USER');
+
+          // Cập nhật state
           userId.value = userData['id'];
+          authToken.value = response['token'] ?? '';
+          isLoggedIn.value = true;
           username.value = userData['username'] ?? '';
+          email.value = emailController.text.trim();
+          role.value = 'USER';
         }
 
         Get.snackbar(
@@ -106,7 +120,7 @@ class AuthController extends GetxController {
           colorText: Colors.white,
         );
 
-        // Tự động điền thông tin đăng nhập sau khi đăng ký thành công
+        // Tự động điền thông tin đăng nhập
         Get.offAllNamed(AppRoutes.login, arguments: {
           'email': emailController.text.trim(),
           'password': passwordController.text.trim()
@@ -123,7 +137,8 @@ class AuthController extends GetxController {
     }
   }
 
-  Future<void> loginUser(GlobalKey<FormState> formKey, {String? emailArg, String? passwordArg}) async {
+  Future<void> loginUser(GlobalKey<FormState> formKey,
+      {String? emailArg, String? passwordArg}) async {
     final loginEmail = emailArg ?? emailController.text.trim();
     final loginPassword = passwordArg ?? passwordController.text.trim();
 
@@ -141,10 +156,12 @@ class AuthController extends GetxController {
         // Lưu thông tin đăng nhập vào SharedPreferences
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('email', loginEmail);
-        await prefs.setString('username', response['username'] ?? loginEmail.split('@')[0]);
+        await prefs.setString('username',
+            response['username'] ?? loginEmail.split('@')[0]);
         await prefs.setString('authToken', response['token'] ?? '');
         await prefs.setBool('isLoggedIn', true);
-        await prefs.setInt('userId', response['userId']); // 🔑 Lưu userId
+        await prefs.setInt('userId', response['userId']);
+        await prefs.setString('role', response['role'] ?? 'USER'); // 👈 lưu role
 
         // Cập nhật state
         isLoggedIn.value = true;
@@ -152,8 +169,9 @@ class AuthController extends GetxController {
         username.value = response['username'] ?? "Người dùng";
         authToken.value = response['token'] ?? '';
         userId.value = response['userId'] ?? 0;
+        role.value = response['role'] ?? 'USER';
 
-        print("✅ Login success - userId: ${userId.value}");
+        print("✅ Login success - userId: ${userId.value}, role: ${role.value}");
 
         Get.snackbar(
           "Thành công",
@@ -177,6 +195,28 @@ class AuthController extends GetxController {
         );
       }
     }
+  }
+  // Thêm vào AuthController để kiểm tra trạng thái đăng nhập
+// Thêm vào AuthController
+  Future<bool> validateQuizSubmission() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('authToken');
+    final uid = prefs.getInt('userId');
+
+    print("🔐 Token Validation:");
+    print("   - Token exists: ${token != null && token.isNotEmpty}");
+    print("   - User ID: $uid");
+    print("   - isLoggedIn: $isLoggedIn");
+
+    return token != null && token.isNotEmpty && uid != null && isLoggedIn.value;
+  }
+
+  void checkAuthStatus() {
+    print("🔄 Current Auth Status:");
+    print("   - isLoggedIn: ${isLoggedIn.value}");
+    print("   - userId: ${userId.value}");
+    print("   - authToken length: ${authToken.value.length}");
+    print("   - role: ${role.value}");
   }
 
   // Phương thức quên mật khẩu
@@ -234,7 +274,8 @@ class AuthController extends GetxController {
   }
 
   // Phương thức reset mật khẩu
-  Future<void> resetPassword(String token, String email, String newPassword) async {
+  Future<void> resetPassword(
+      String token, String email, String newPassword) async {
     if (newPassword.isEmpty) {
       Get.snackbar(
         "Lỗi",
@@ -307,11 +348,13 @@ class AuthController extends GetxController {
     await prefs.remove('authToken');
     await prefs.remove('username');
     await prefs.remove('userId');
+    await prefs.remove('role'); // 👈 clear role khi logout
 
     isLoggedIn.value = false;
     email.value = '';
     username.value = '';
     userId.value = 0;
+    role.value = 'USER'; // 👈 reset về USER
     selectedClass.value = '';
     isClassSelected.value = false;
     authToken.value = '';

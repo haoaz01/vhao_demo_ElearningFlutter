@@ -77,6 +77,19 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   Future<void> _submitQuiz({bool autoSubmit = false}) async {
+    // 🔥 KIỂM TRA TOKEN TRƯỚC KHI SUBMIT
+    final authController = Get.find<AuthController>();
+    if (!await authController.validateQuizSubmission()) {
+      Get.snackbar(
+        "Lỗi",
+        "Vui lòng đăng nhập lại để tiếp tục",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
     int correct = 0;
     Map<int, List<int>> userAnswersForBackend = {};
 
@@ -92,10 +105,11 @@ class _QuizScreenState extends State<QuizScreen> {
       if (selectedAnswers.containsKey(i)) {
         int selectedIndex = selectedAnswers[i]!;
         userAnswersForBackend[questions[i].id] = [questions[i].choices[selectedIndex].id];
-      }
 
-      if (selectedAnswers[i] == correctAnswerIndex) {
-        correct++;
+        // Tính điểm cục bộ
+        if (selectedAnswers[i] == correctAnswerIndex) {
+          correct++;
+        }
       }
     }
 
@@ -110,10 +124,20 @@ class _QuizScreenState extends State<QuizScreen> {
     });
 
     try {
+      print("🔄 Submitting quiz with token: ${authController.authToken.value}");
+
       final result = await quizController.submitQuiz(
         quizId,
         userAnswersForBackend,
         durationSeconds,
+      );
+
+      // 🔥 CẬP NHẬT BEST SCORE SAU KHI SUBMIT THÀNH CÔNG
+      quizController.updateBestScoreAfterSubmit(
+          quizId,
+          authController.userId.value,
+          result.score,
+          result.correctAnswers
       );
 
       Get.offNamed(
@@ -131,6 +155,9 @@ class _QuizScreenState extends State<QuizScreen> {
         },
       );
     } catch (e) {
+      print("❌ Submit error: $e");
+
+      // Fallback: vẫn hiển thị kết quả cục bộ nếu submit thất bại
       Get.offNamed(
         AppRoutes.quizResult,
         arguments: {

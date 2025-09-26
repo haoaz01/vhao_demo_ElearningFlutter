@@ -78,14 +78,40 @@ class QuizRepository {
   }
 
   Future<List<Question>> getQuizQuestions(int quizId) async {
-    final response = await http.get(Uri.parse("$baseUrl/$quizId/questions"));
+    final prefs = await SharedPreferences.getInstance();
+    final authToken = prefs.getString('authToken');
+
+    if (authToken == null || authToken.isEmpty) {
+      throw Exception("Authentication token not found. Please login again.");
+    }
+
+    final uri = Uri.parse("$baseUrl/$quizId/questions");
+
+    final response = await http.get(
+      uri,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $authToken", // 🔥 Gắn token
+      },
+    );
+
+    print("📤 Request: $uri");
+    print("🔑 Token exists: ${authToken.isNotEmpty}");
+    print("📥 Status: ${response.statusCode}");
+    print("📥 Body: ${response.body}");
+
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       return data.map((json) => Question.fromJson(json)).toList();
+    } else if (response.statusCode == 401 || response.statusCode == 403) {
+      throw Exception("Unauthorized. Please login again.");
     } else {
-      throw Exception("Failed to load quiz questions");
+      throw Exception(
+        "Failed to load quiz questions. Status: ${response.statusCode}, Body: ${response.body}",
+      );
     }
   }
+
 
   Future<List<Choice>> getQuestionChoices(int questionId) async {
     final response = await http.get(Uri.parse("$baseUrl/questions/$questionId/choices"));
@@ -100,9 +126,14 @@ class QuizRepository {
   Future<QuizResult> submitQuiz(int quizId, Map<int, List<int>> userAnswers, int durationSeconds) async {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getInt("userId");
+    final authToken = prefs.getString("authToken");
 
     if (userId == null) {
       throw Exception("UserId not found. Please login again.");
+    }
+
+    if (authToken == null || authToken.isEmpty) {
+      throw Exception("Authentication token not found. Please login again.");
     }
 
     Map<String, List<int>> answersWithStringKeys = {};
@@ -119,15 +150,30 @@ class QuizRepository {
     final uri = Uri.parse("$baseUrl/$quizId/submit");
     final jsonBody = jsonEncode(requestBody);
 
+    // 🔥 THÊM TOKEN VÀO HEADER
+    final headers = {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer $authToken",
+    };
+
+    print("📤 Sending request to: $uri");
+    print("🔑 With token: ${authToken.substring(0, 20)}...");
+    print("👤 User ID: $userId");
+
     final response = await http.post(
       uri,
-      headers: {"Content-Type": "application/json"},
+      headers: headers,
       body: jsonBody,
     );
+
+    print("📥 Response status: ${response.statusCode}");
+    print("📥 Response body: ${response.body}");
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       return QuizResult.fromJson(data);
+    } else if (response.statusCode == 401) {
+      throw Exception("Authentication failed. Please login again.");
     } else {
       throw Exception("Failed to submit quiz. Status: ${response.statusCode}, Body: ${response.body}");
     }

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:device_preview/device_preview.dart';
@@ -17,21 +16,18 @@ void main() async {
   final bool isFirstOpen = prefs.getBool('isFirstOpen') ?? true;
   final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
 
-  // Khởi tạo các controller
   Get.put(AuthController());
   Get.put(MainController());
 
-  // Quyết định initialRoute dựa trên isFirstOpen trước
   String initialRoute;
   if (isFirstOpen) {
-    initialRoute = AppRoutes.welcome; // lần đầu mở app
+    initialRoute = AppRoutes.welcome;
   } else {
     initialRoute = isLoggedIn ? AppRoutes.main : AppRoutes.login;
   }
 
   runApp(
     DevicePreview(
-      // enabled: kDebugMode && !kIsWeb,
       enabled: false,
       builder: (context) => MyApp(initialRoute: initialRoute),
     ),
@@ -46,7 +42,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ScreenUtilInit(
-      designSize: const Size(360, 800), // Galaxy A21s logical size
+      designSize: const Size(360, 800),
       minTextAdapt: true,
       splitScreenMode: true,
       builder: (_, child) {
