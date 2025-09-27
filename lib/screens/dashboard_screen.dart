@@ -4,6 +4,11 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart' hide Progress;
 import '../controllers/progress_controller.dart';
 import '../controllers/auth_controller.dart';
+import 'package:intl/intl.dart';
+import 'package:fl_chart/fl_chart.dart';
+
+// Thêm import cho StreakScreen
+import 'streak_screen.dart'; // Đảm bảo đường dẫn này đúng với project của bạn
 
 class DashboardScreen extends StatefulWidget {
   @override
@@ -40,6 +45,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _loadProgressData();
+    final pc = Get.find<ProgressController>();
+    pc.loadStreak();
   }
 
   Future<void> _loadProgressData() async {
@@ -286,6 +293,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
+  // Hàm chuyển đến Streak Screen
+  void _navigateToStreakScreen() {
+    Get.to(() => StreakScreen());
+  }
+
   Widget _buildLoadingState() {
     return Center(
       child: Column(
@@ -399,28 +411,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         return Padding(
           padding: EdgeInsets.all(16.w),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: ListView(
             children: [
               // Welcome Section
-              Text(
-                'Xin chào, ${authController.username.value}!',
-                style: TextStyle(
-                  fontSize: 20.sp,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              SizedBox(height: 4.h),
-              Text(
-                'Tiến trình học tập của bạn ($currentGrade)',
-                style: TextStyle(
-                  fontSize: 14.sp,
-                  color: Colors.grey[600],
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Xin chào, ${authController.username.value}!',
+                    style: TextStyle(
+                      fontSize: 20.sp,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  SizedBox(height: 4.h),
+                  Text(
+                    'Tiến trình học tập của bạn ($currentGrade)',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
               ),
 
               SizedBox(height: 24.h),
+
+              // Streak Card với chức năng chuyển trang
+              GestureDetector(
+                onTap: _navigateToStreakScreen,
+                child: const _StreakCardFromApi(),
+              ),
+              SizedBox(height: 16.h),
+
+              // Quiz History
+              _QuizHistoryStatic(),
+              SizedBox(height: 16.h),
+
+              // Quiz Progress
+              _QuizProgressCardStatic(quizPercent01: 0.65),
+              SizedBox(height: 16.h),
 
               // Overall Progress Card
               Card(
@@ -511,36 +542,273 @@ class _DashboardScreenState extends State<DashboardScreen> {
               SizedBox(height: 16.h),
 
               // Horizontal Scrollable Subjects
-              Expanded(
-                child: ListView(
-                  children: [
-                    Container(
-                      height: 240.h,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: displaySubjects.length,
-                        itemBuilder: (context, index) {
-                          final subject = displaySubjects[index];
-
-                          return _buildSubjectCard(
-                            subject['name'],
-                            subject['code'],
-                            subject['grade'],
-                            subject['completedLessons'],
-                            subject['totalLessons'],
-                            subject['progressPercent'],
-                            subject['hasProgress'],
-                          );
-                        },
-                      ),
-                    ),
-                  ],
+              Container(
+                height: 240.h,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: displaySubjects.length,
+                  itemBuilder: (context, index) {
+                    final subject = displaySubjects[index];
+                    return _buildSubjectCard(
+                      subject['name'],
+                      subject['code'],
+                      subject['grade'],
+                      subject['completedLessons'],
+                      subject['totalLessons'],
+                      subject['progressPercent'],
+                      subject['hasProgress'],
+                    );
+                  },
                 ),
               ),
             ],
           ),
         );
       }),
+    );
+  }
+}
+
+/// ========================= STREAK (API) =========================
+class _StreakCardFromApi extends StatelessWidget {
+  const _StreakCardFromApi();
+
+  @override
+  Widget build(BuildContext context) {
+    final pc = Get.find<ProgressController>();
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Obx(() {
+          if (!pc.streakLoaded.value) {
+            return const SizedBox(
+              height: 80,
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          final cur = pc.currentStreak.value;
+          final best = pc.bestStreak.value;
+          final total = pc.totalDays.value;
+          final last = pc.lastActive.value;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: const [
+                  Icon(Icons.local_fire_department, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Text(
+                    'Chuỗi ngày học liên tiếp',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _StatChip(value: '$cur', label: 'Ngày liên tiếp'),
+                  _StatChip(value: '$total', label: 'Tổng ngày học'),
+                  _StatChip(value: '$best', label: 'Kỷ lục'),
+                ],
+              ),
+              if (last != null) ...[
+                const SizedBox(height: 6),
+                Center(
+                  child: Text(
+                    'Hoạt động gần nhất: ${DateFormat('dd/MM/yyyy').format(last)}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  final String value;
+  final String label;
+  const _StatChip({required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.blue,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+        ),
+      ],
+    );
+  }
+}
+
+/// ========================= QUIZ % (STATIC) =========================
+class _QuizProgressCardStatic extends StatelessWidget {
+  final double quizPercent01; // 0..1
+  const _QuizProgressCardStatic({required this.quizPercent01});
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = (quizPercent01 * 100).clamp(0, 100).toStringAsFixed(0);
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Tiến độ Quiz',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: quizPercent01.clamp(0.0, 1.0),
+                minHeight: 10,
+                backgroundColor: Colors.blue.withOpacity(0.15),
+                color: Colors.blue,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Đã hoàn thành $pct% số quiz',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// ========================= QUIZ HISTORY (STATIC BAR CHART) =========================
+class _QuizHistoryStatic extends StatelessWidget {
+  const _QuizHistoryStatic({super.key});
+
+  // Tạo data cứng: 7 ngày gần nhất với tỉ lệ đúng ngẫu nhiên
+  List<DateTime> _last7Days() {
+    final today = DateTime.now();
+    return List.generate(
+        7,
+            (i) => DateTime(today.year, today.month, today.day)
+            .subtract(Duration(days: 6 - i)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final days = _last7Days();
+    // dữ liệu % đúng (0..100) cứng để test
+    final List<double> percents = [40, 55, 62, 80, 70, 50, 90];
+
+    final avg = percents.isEmpty
+        ? 0.0
+        : percents.reduce((a, b) => a + b) / percents.length;
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Lịch sử Quiz (tỉ lệ đúng %)',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Điểm trung bình: ${avg.toStringAsFixed(0)}%',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 220,
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: 100,
+                  barTouchData: BarTouchData(enabled: true),
+                  titlesData: FlTitlesData(
+                    leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: true, reservedSize: 28),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        interval: 1,
+                        getTitlesWidget: (value, meta) {
+                          final idx = value.toInt();
+                          if (idx < 0 || idx >= days.length) {
+                            return const SizedBox.shrink();
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 4.0),
+                            child: Text(
+                              DateFormat('dd/MM').format(days[idx]),
+                              style: const TextStyle(fontSize: 10),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    rightTitles:
+                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles:
+                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  ),
+                  gridData: FlGridData(show: true, drawVerticalLine: false),
+                  barGroups: List.generate(days.length, (i) {
+                    final p = percents[i].clamp(0.0, 100.0);
+                    return BarChartGroupData(
+                      x: i,
+                      barRods: [
+                        BarChartRodData(
+                          toY: p,
+                          width: 14,
+                          color: Colors.blue,
+                          borderRadius: BorderRadius.circular(4),
+                          backDrawRodData: BackgroundBarChartRodData(
+                            show: true,
+                            toY: 100,
+                            color: Colors.blue.withOpacity(0.15),
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

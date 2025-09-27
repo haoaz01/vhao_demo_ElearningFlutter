@@ -6,7 +6,7 @@ import '../model/lesson_completion_model.dart';
 import '../model/progress_model.dart';
 
 class ProgressRepository {
-  static const String _baseUrl = 'http://192.168.0.144:8080/api/progress';
+  static const String _baseUrl = 'http://192.168.1.219:8080/api/progress';
   int min(int a, int b) => a < b ? a : b;
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();

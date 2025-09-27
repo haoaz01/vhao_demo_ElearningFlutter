@@ -22,19 +22,19 @@ class PdfController extends GetxController {
 
   String _getBaseUrl() {
     if (kIsWeb) {
-      return "http://192.168.0.144:8080/api";
+      return "http://192.168.1.219:8080/api";
     } else if (Platform.isAndroid) {
       if (_isGenymotion()) {
-        return "http://192.168.51.2:8080/api";
+        return "http://192.168.1.219:8080/api";
       } else if (_isEmulator()) {
-        return "http://10.0.2.2:8080/api";
+        return "http://192.168.1.219:8080/api";
       } else {
-        return "http://192.168.0.144:8080/api";
+        return "http://192.168.1.219:8080/api";
       }
     } else if (Platform.isIOS) {
       return "http://localhost:8080/api";
     } else {
-      return "http://192.168.0.144:8080/api";
+      return "http://192.168.1.219:8080/api";
     }
   }
 

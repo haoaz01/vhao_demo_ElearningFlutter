@@ -1,57 +1,194 @@
 import 'package:get/get.dart' hide Progress;
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../model/progress_model.dart';
 import '../repositories/progress_repository.dart';
+import '../repositories/streak_repository.dart';
 
 class ProgressController extends GetxController {
+  // Repositories
   final ProgressRepository progressRepository = ProgressRepository();
+  final StreakRepository streakRepository = StreakRepository();
+
+  // Progress state
   final RxList<Progress> progressList = <Progress>[].obs;
   final RxMap<String, bool> lessonCompletionStatus = <String, bool>{}.obs;
   final RxBool isLoading = false.obs;
 
-  // THÊM CÁC GETTER MỚI
+  // User state
   final RxBool isLoggedIn = false.obs;
   final RxInt userId = 0.obs;
+
+  // Streak state
+  final RxInt currentStreak = 0.obs;
+  final RxInt bestStreak = 0.obs;
+  final RxInt totalDays = 0.obs;
+  final Rxn<DateTime> lastActive = Rxn<DateTime>();
+
+  /// Trigger UI refreshes for streak-related widgets (use `ever(statsVersion, ...)`)
+  final RxInt statsVersion = 0.obs;
+
+  /// Mark that streak has been loaded at least once
+  final RxBool streakLoaded = false.obs;
+
+  // ===== Local study-days (optional local cache) =====
+  static const String _studyDaysKey = 'study_days';
+
+  DateTime _dayKey(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  String _fmt(DateTime d) {
+    final y = d.year.toString().padLeft(4, '0');
+    final m = d.month.toString().padLeft(2, '0');
+    final da = d.day.toString().padLeft(2, '0');
+    return '$y-$m-$da';
+  }
+
+  DateTime _parseDay(String s) {
+    final parts = s.split('-');
+    final y = int.parse(parts[0]);
+    final m = int.parse(parts[1]);
+    final d = int.parse(parts[2]);
+    return DateTime(y, m, d);
+  }
+  // ===== END Local study-days =====
 
   @override
   void onInit() {
     super.onInit();
-    _loadUserData(); // THÊM: Tải dữ liệu user khi khởi tạo
+    _loadUserData();
+    loadStreak(); // ✅ chỉ còn 1 hàm, không lỗi tham số
   }
 
-  // THÊM PHƯƠNG THỨC MỚI: Tải dữ liệu user từ SharedPreferences
+  // Load user data from SharedPreferences
   Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
     userId.value = prefs.getInt('userId') ?? 0;
     isLoggedIn.value = prefs.getBool('isLoggedIn') ?? false;
-
-    print("🔐 ProgressController - UserId: ${userId.value}, IsLoggedIn: ${isLoggedIn.value}");
+    // Debug
+    // ignore: avoid_print
+    print("🔐 ProgressController - userId=${userId.value}, isLoggedIn=${isLoggedIn.value}");
   }
 
-  // Lấy userId từ SharedPreferences (GIỮ NGUYÊN)
+  // Always refresh userId from SharedPreferences (source of truth)
   Future<int> _getUserId() async {
     final prefs = await SharedPreferences.getInstance();
     final id = prefs.getInt('userId') ?? 0;
-    userId.value = id; // CẬP NHẬT GIÁ TRỊ
+    userId.value = id;
     return id;
   }
 
-  // Đánh dấu bài học đã hoàn thành
+  // ===== Streak API (server-first, local optional) =====
+  /// Đồng bộ/lấy streak từ server. Có thể dùng [token] nếu repo hỗ trợ.
+  Future<void> loadStreak({String? token}) async {
+    try {
+      final uid = await _getUserId();
+      if (uid <= 0) {
+        streakLoaded.value = false;
+        return;
+      }
+
+      // Server call
+      final res = await streakRepository.getStreak(uid /*, token: token*/);
+      if (res['statusCode'] == 200 && res['data'] != null) {
+        final m = Map<String, dynamic>.from(res['data'] as Map);
+
+        currentStreak.value = (m['streakCount'] ?? m['currentStreak'] ?? 0) as int;
+        bestStreak.value    = (m['bestStreak'] ?? 0) as int;
+        totalDays.value     = (m['totalDays'] ?? 0) as int;
+        lastActive.value    = DateTime.tryParse(m['lastActiveDate']);
+
+        final raw = m['lastActiveDate'];
+        if (raw is String) {
+          lastActive.value = DateTime.tryParse(raw);
+        } else {
+          lastActive.value = null;
+        }
+
+        streakLoaded.value = true;
+        statsVersion.value++;
+      } else {
+        streakLoaded.value = false;
+      }
+
+      // Đảm bảo local key tồn tại (không ảnh hưởng server streak)
+      await readStudyDays();
+    } catch (e) {
+      streakLoaded.value = false;
+      // ignore: avoid_print
+      print('⚠️ loadStreak error: $e');
+    }
+  }
+
+  /// Chạm streak hôm nay trên server, sau đó refresh lại số liệu.
+  Future<void> touchStreakToday() async {
+    try {
+      final uid = await _getUserId();
+      if (uid <= 0) return;
+
+      final res = await streakRepository.touchStreak(uid);
+      if (res['statusCode'] == 200) {
+        await loadStreak(); // refresh
+      }
+    } catch (_) {
+      // swallow, UI không cần crash
+    }
+  }
+
+  // ===== Local study-days helpers (tuỳ chọn) =====
+  /// Trả về tập các ngày học (mỗi ngày chuẩn hoá 00:00)
+  Future<Set<DateTime>> readStudyDays() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_studyDaysKey) ?? <String>[];
+    return list.map(_parseDay).map(_dayKey).toSet();
+  }
+
+  /// Ghi nhận đã học vào ngày [date] (mặc định hôm nay) – LOCAL ONLY
+  Future<void> markStudiedOn([DateTime? date]) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_studyDaysKey) ?? <String>[];
+
+    final day = _fmt(_dayKey(date ?? DateTime.now()));
+    if (!list.contains(day)) {
+      list.add(day);
+      await prefs.setStringList(_studyDaysKey, list);
+      streakLoaded.value = true;
+      statsVersion.value++;
+      // ignore: avoid_print
+      print('🔥 Marked studied on $day');
+    }
+  }
+
+  /// Ghi đè toàn bộ từ server (nếu cần dùng)
+  Future<void> _overwriteStudyDays(Set<DateTime> days) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = days.map(_fmt).toList()..sort();
+    await prefs.setStringList(_studyDaysKey, list);
+    streakLoaded.value = true;
+    statsVersion.value++;
+  }
+  // ===== END Streak API =====
+
+  // ===== Progress APIs =====
   Future<void> completeLesson(int lessonId) async {
+    await touchStreakToday(); // ✅ cập nhật streak server khi hoàn thành bài
+
     try {
       isLoading.value = true;
-      final userId = await _getUserId();
-      if (userId == 0) throw Exception('User ID not found');
+      final uid = await _getUserId();
+      if (uid == 0) throw Exception('User ID not found');
 
-      // THÊM DEBUG LOG
-      print("🎯 Completing lesson $lessonId for user $userId");
+      // ignore: avoid_print
+      print("🎯 Completing lesson $lessonId for user $uid");
 
-      await progressRepository.completeLesson(userId, lessonId);
-      // Cập nhật trạng thái cục bộ
-      lessonCompletionStatus['$userId-$lessonId'] = true;
-      // Cập nhật tiến trình
+      await progressRepository.completeLesson(uid, lessonId);
+
+      // Local state update
+      lessonCompletionStatus['$uid-$lessonId'] = true;
+
+      // Refresh overall progress
       await fetchProgressByUser();
     } catch (e) {
+      // ignore: avoid_print
       print("❌ Error completing lesson: $e");
       Get.snackbar('Lỗi', 'Không thể đánh dấu bài học đã hoàn thành: $e');
     } finally {
@@ -59,21 +196,24 @@ class ProgressController extends GetxController {
     }
   }
 
-  // Hủy đánh dấu hoàn thành
   Future<void> uncompleteLesson(int lessonId) async {
     try {
       isLoading.value = true;
-      final userId = await _getUserId();
-      if (userId == 0) throw Exception('User ID not found');
+      final uid = await _getUserId();
+      if (uid == 0) throw Exception('User ID not found');
 
-      print("🎯 Uncompleting lesson $lessonId for user $userId");
+      // ignore: avoid_print
+      print("🎯 Uncompleting lesson $lessonId for user $uid");
 
-      await progressRepository.uncompleteLesson(userId, lessonId);
-      // Cập nhật trạng thái cục bộ
-      lessonCompletionStatus['$userId-$lessonId'] = false;
-      // Cập nhật tiến trình
+      await progressRepository.uncompleteLesson(uid, lessonId);
+
+      lessonCompletionStatus['$uid-$lessonId'] = false;
+
       await fetchProgressByUser();
+
+      // Không xoá study-day đã ghi trước đó để tránh tụt streak ngoài ý muốn.
     } catch (e) {
+      // ignore: avoid_print
       print("❌ Error uncompleting lesson: $e");
       Get.snackbar('Lỗi', 'Không thể hủy đánh dấu hoàn thành: $e');
     } finally {
@@ -81,44 +221,47 @@ class ProgressController extends GetxController {
     }
   }
 
-  // Kiểm tra trạng thái hoàn thành của một bài học
   Future<bool> isLessonCompleted(int lessonId) async {
-    final userId = await _getUserId();
-    if (userId == 0) {
+    final uid = await _getUserId();
+    if (uid == 0) {
+      // ignore: avoid_print
       print("⚠️ User ID is 0, cannot check completion");
       return false;
     }
 
-    // Kiểm tra trong bộ nhớ trước
-    if (lessonCompletionStatus.containsKey('$userId-$lessonId')) {
-      final status = lessonCompletionStatus['$userId-$lessonId']!;
-      print("📚 Lesson $lessonId completion status from memory: $status");
+    // Check in-memory first
+    final key = '$uid-$lessonId';
+    if (lessonCompletionStatus.containsKey(key)) {
+      final status = lessonCompletionStatus[key]!;
+      // ignore: avoid_print
+      print("📚 Lesson $lessonId completion status (memory): $status");
       return status;
     }
 
-    // Nếu chưa có, gọi API để kiểm tra
+    // Fallback to API
     try {
+      // ignore: avoid_print
       print("🌐 Checking lesson completion from API...");
-      final completed = await progressRepository.checkLessonCompletion(userId, lessonId);
-      lessonCompletionStatus['$userId-$lessonId'] = completed;
-      print("📚 Lesson $lessonId completion status from API: $completed");
+      final completed = await progressRepository.checkLessonCompletion(uid, lessonId);
+      lessonCompletionStatus[key] = completed;
+      // ignore: avoid_print
+      print("📚 Lesson $lessonId completion status (API): $completed");
       return completed;
     } catch (e) {
+      // ignore: avoid_print
       print("❌ Error checking lesson completion: $e");
-      // Nếu có lỗi, trả về false
       return false;
     }
   }
 
-  // Lấy tất cả tiến trình của user
   Future<void> fetchProgressByUser() async {
     try {
       isLoading.value = true;
-      final userId = await _getUserId();
-      if (userId == 0) throw Exception('User ID not found');
+      final uid = await _getUserId();
+      if (uid == 0) throw Exception('User ID not found');
 
-      final List<Progress> progress = await progressRepository.getProgressByUser(userId);
-      progressList.assignAll(progress); // SỬA: assignAll nhận Iterable<Progress>
+      final items = await progressRepository.getProgressByUser(uid);
+      progressList.assignAll(items);
     } catch (e) {
       Get.snackbar('Lỗi', 'Không thể tải tiến trình: $e');
     } finally {
@@ -126,43 +269,35 @@ class ProgressController extends GetxController {
     }
   }
 
-  // Lấy tiến trình theo môn học
   Future<Progress?> getProgressBySubject(int subjectId) async {
     try {
-      final userId = await _getUserId();
-      if (userId == 0) throw Exception('User ID not found');
+      final uid = await _getUserId();
+      if (uid == 0) throw Exception('User ID not found');
 
-      return await progressRepository.getProgressBySubject(userId, subjectId);
-    } catch (e) {
+      return await progressRepository.getProgressBySubject(uid, subjectId);
+    } catch (_) {
       return null;
     }
   }
 
-  // Lấy tiến trình theo khối lớp
   Future<List<Progress>> getProgressByGrade(int grade) async {
     try {
-      final userId = await _getUserId();
-      if (userId == 0) throw Exception('User ID not found');
+      final uid = await _getUserId();
+      if (uid == 0) throw Exception('User ID not found');
 
-      return await progressRepository.getProgressByGrade(userId, grade);
-    } catch (e) {
-      return []; // SỬA: Trả về List<Progress> rỗng
+      return await progressRepository.getProgressByGrade(uid, grade);
+    } catch (_) {
+      return <Progress>[];
     }
   }
 
-// Tính tổng tiến trình trên tất cả các môn
+  // Tổng tiến trình trên tất cả các môn
   double get overallProgress {
     if (progressList.isEmpty) return 0.0;
-
     double totalPercent = 0.0;
-    int count = 0;
-
-    for (var progress in progressList) {
-      totalPercent += progress.progressPercent;
-      count++;
+    for (final p in progressList) {
+      totalPercent += p.progressPercent;
     }
-
-    return count > 0 ? totalPercent / count : 0.0;
+    return totalPercent / progressList.length;
   }
-
 }

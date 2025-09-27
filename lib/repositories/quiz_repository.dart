@@ -8,7 +8,7 @@ import '../model/choice_model.dart';
 import '../model/quiz_result_model.dart';
 
 class QuizRepository {
-  final String baseUrl = "http://192.168.0.144:8080/api/quizzes";
+  final String baseUrl = "http://192.168.1.219:8080/api/quizzes";
 
   Future<List<Quiz>> getAllQuizzes() async {
     final response = await http.get(Uri.parse(baseUrl));
