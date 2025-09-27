@@ -1,6 +1,7 @@
 import 'package:get/get.dart' hide Progress;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../utils/streak_utils.dart';
 import '../model/progress_model.dart';
 import '../repositories/progress_repository.dart';
 import '../repositories/streak_repository.dart';
@@ -52,6 +53,7 @@ class ProgressController extends GetxController {
   }
   // ===== END Local study-days =====
 
+
   @override
   void onInit() {
     super.onInit();
@@ -97,7 +99,12 @@ class ProgressController extends GetxController {
         totalDays.value     = (m['totalDays'] ?? 0) as int;
         lastActive.value    = DateTime.tryParse(m['lastActiveDate']);
 
+
         final raw = m['lastActiveDate'];
+        final chain = buildStreakChain(
+          currentStreak: currentStreak.value,
+          lastActiveDate: lastActive.value,
+        );
         if (raw is String) {
           lastActive.value = DateTime.tryParse(raw);
         } else {
@@ -127,6 +134,7 @@ class ProgressController extends GetxController {
 
       final res = await streakRepository.touchStreak(uid);
       if (res['statusCode'] == 200) {
+        await markStudiedOn();      // <— thêm dòng này
         await loadStreak(); // refresh
       }
     } catch (_) {
