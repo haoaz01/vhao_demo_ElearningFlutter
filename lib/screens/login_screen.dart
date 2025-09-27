@@ -4,25 +4,36 @@ import 'package:flutter_elearning_application/app/routes/app_routes.dart';
 import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
   final GlobalKey<FormState> _formkeyLogin = GlobalKey<FormState>();
   final AuthController authController = Get.find<AuthController>();
 
-  LoginScreen({super.key});
+  @override
+  void initState() {
+    super.initState();
+    final arguments = Get.arguments;
+    if (arguments != null && arguments is Map<String, dynamic>) {
+      // Dùng addPostFrameCallback để tránh lỗi "setState during build"
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (arguments['email'] != null) {
+          authController.emailController.text = arguments['email'];
+        }
+        if (arguments['password'] != null) {
+          authController.passwordController.text = arguments['password'];
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Nhận thông tin từ arguments nếu có (sau khi đăng ký hoặc logout)
-    final arguments = Get.arguments;
-    if (arguments != null && arguments is Map<String, dynamic>) {
-      if (arguments['email'] != null) {
-        authController.emailController.text = arguments['email'];
-      }
-      if (arguments['password'] != null) {
-        authController.passwordController.text = arguments['password'];
-      }
-    }
-
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: Colors.white,
@@ -34,9 +45,9 @@ class LoginScreen extends StatelessWidget {
             Get.back();
           },
           icon: Icon(
-              Icons.arrow_back_ios,
-              size: 20.sp,
-              color: Colors.black
+            Icons.arrow_back_ios,
+            size: 20.sp,
+            color: Colors.black,
           ),
         ),
       ),
@@ -95,7 +106,8 @@ class LoginScreen extends StatelessWidget {
                         child: Obx(
                               () => TextFormField(
                             controller: authController.passwordController,
-                            obscureText: !authController.isPasswordVisible.value,
+                            obscureText:
+                            !authController.isPasswordVisible.value,
                             decoration: InputDecoration(
                               labelText: "Password",
                               labelStyle: TextStyle(fontSize: 14.sp),
@@ -148,40 +160,47 @@ class LoginScreen extends StatelessWidget {
                       SizedBox(height: 30.h),
 
                       // Login Button
-                      Obx(() => authController.isLoading.value
-                          ? CircularProgressIndicator(value: 30.w)
-                          : Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 40.w),
-                        child: Container(
-                          padding: EdgeInsets.only(top: 3.h, left: 3.w),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(50.r),
-                            border: Border.all(color: Colors.black),
-                          ),
-                          child: MaterialButton(
-                            minWidth: double.infinity,
-                            height: 60.h,
-                            onPressed: () {
-                              if (_formkeyLogin.currentState!.validate()) {
-                                authController.loginUser(_formkeyLogin);
-                              }
-                            },
-                            color: Colors.green,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
+                      Obx(
+                            () => authController.isLoading.value
+                            ? CircularProgressIndicator(strokeWidth: 2.w)
+                            : Padding(
+                          padding:
+                          EdgeInsets.symmetric(horizontal: 40.w),
+                          child: Container(
+                            padding:
+                            EdgeInsets.only(top: 3.h, left: 3.w),
+                            decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(50.r),
+                              border: Border.all(color: Colors.black),
                             ),
-                            child: Text(
-                              "Đăng nhập",
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16.sp,
-                                color: Colors.white,
+                            child: MaterialButton(
+                              minWidth: double.infinity,
+                              height: 60.h,
+                              onPressed: () {
+                                if (_formkeyLogin.currentState!
+                                    .validate()) {
+                                  authController
+                                      .loginUser(_formkeyLogin);
+                                }
+                              },
+                              color: Colors.green,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                BorderRadius.circular(50.r),
+                              ),
+                              child: Text(
+                                "Đăng nhập",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16.sp,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      )),
+                      ),
                       SizedBox(height: 20.h),
 
                       // Register Link

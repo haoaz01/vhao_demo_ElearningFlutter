@@ -267,4 +267,26 @@ class TheoryController extends GetxController {
     }
     throw Exception('Lesson with id $lessonId not found');
   }
+
+  // Thêm vào TheoryController class
+  void markAsCompleted(String subject, int grade, String lessonTitle) {
+    final key = _getStorageKey(subject, grade);
+    if (!completedLessonsBySubject.containsKey(key)) {
+      completedLessonsBySubject[key] = <String>{};
+    }
+    completedLessonsBySubject[key]!.add(lessonTitle);
+    _saveCompletedLessons(subject, grade);
+    completedLessonsBySubject.refresh();
+    _updateProgress(subject, grade);
+  }
+
+  void markAsUncompleted(String subject, int grade, String lessonTitle) {
+    final key = _getStorageKey(subject, grade);
+    if (completedLessonsBySubject.containsKey(key)) {
+      completedLessonsBySubject[key]!.remove(lessonTitle);
+      _saveCompletedLessons(subject, grade);
+      completedLessonsBySubject.refresh();
+      _updateProgress(subject, grade);
+    }
+  }
 }

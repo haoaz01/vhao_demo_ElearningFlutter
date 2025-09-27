@@ -8,6 +8,7 @@ import 'controllers/auth_controller.dart';
 import 'controllers/main_controller.dart';
 import 'app/routes/app_page.dart';
 import 'app/routes/app_routes.dart';
+import 'controllers/progress_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,6 +19,7 @@ void main() async {
 
   Get.put(AuthController());
   Get.put(MainController());
+  Get.put(ProgressController());
 
   String initialRoute;
   if (isFirstOpen) {

@@ -18,4 +18,5 @@ class AppRoutes {
   static const practiceExamDetail = '/practice_exam_detail';
   static const solveExercisesDetail = '/solve_exercises_detail';
   static const search = '/search';
+  static const String dashboard = '/dashboard';
 }

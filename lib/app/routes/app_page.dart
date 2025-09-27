@@ -6,6 +6,7 @@ import 'package:flutter_elearning_application/screens/welcome_screen.dart';
 
 import '../../controllers/practice_exam_controller.dart';
 import '../../middlewares/role_middleware.dart';
+import '../../screens/dashboard_screen.dart';
 import '../../screens/forgot_password_screen.dart';
 import '../../screens/lesson_detail_screen.dart';
 import '../../screens/practice_exam_detail_screen.dart';
@@ -136,6 +137,12 @@ class AppPages {
     GetPage(
       name: AppRoutes.search,
       page: () => SearchScreen(),
+      middlewares: [RoleMiddleware('USER')],
+    ),
+    GetPage(
+      name: AppRoutes.dashboard,
+      page: () => DashboardScreen(),
+      transition: Transition.fadeIn,
       middlewares: [RoleMiddleware('USER')],
     ),
   ];

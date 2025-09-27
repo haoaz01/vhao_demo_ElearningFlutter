@@ -4,10 +4,12 @@ import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import '../controllers/auth_controller.dart';
 import '../model/lesson_content_model.dart';
 import '../model/lesson_model.dart';
 import '../repositories/subject_repository.dart';
 import '../controllers/theory_controller.dart';
+import '../controllers/progress_controller.dart'; // THÊM IMPORT NÀY
 
 class LessonDetailScreen extends StatefulWidget {
   final Lesson lesson;
@@ -24,12 +26,15 @@ class _LessonDetailScreenState extends State<LessonDetailScreen>
   ChewieController? _chewieController;
   YoutubePlayerController? _youtubeController;
   final TheoryController theoryController = Get.find<TheoryController>();
+  final ProgressController progressController = Get.find<ProgressController>(); // THÊM DÒNG NÀY
   final SubjectRepository repository = SubjectRepository();
+  final AuthController authController = Get.find<AuthController>();
   bool _isLoading = false;
   bool _isYoutube = false;
   late AnimationController _animController;
   bool _isCompleted = false;
-  bool _updated = false; // ✅ theo dõi có thay đổi hay không
+  bool _updated = false;
+  bool _isCompleting = false; // THÊM BIẾN MỚI ĐỂ THEO DÕI TRẠNG THÁI ĐANG HOÀN THÀNH
 
   @override
   void initState() {
@@ -41,16 +46,57 @@ class _LessonDetailScreenState extends State<LessonDetailScreen>
       upperBound: 1.05,
     )..repeat(reverse: true);
 
-    _isCompleted = theoryController.isCompleted(
-      theoryController.subject,
-      theoryController.grade,
-      widget.lesson.title,
-    );
-
+    _loadCompletionStatus(); // THAY ĐỔI: Gọi hàm mới để tải trạng thái từ server
     _initializePlayer();
 
     if (widget.lesson.contents.isEmpty) {
       _loadContents();
+    }
+  }
+
+  // HÀM MỚI: Tải trạng thái hoàn thành từ server
+  Future<void> _loadCompletionStatus() async {
+    try {
+      // Ưu tiên kiểm tra từ server trước
+      final serverCompleted = await progressController.isLessonCompleted(widget.lesson.id);
+
+      // Đồng bộ với local storage
+      final localCompleted = theoryController.isCompleted(
+        theoryController.subject,
+        theoryController.grade,
+        widget.lesson.title,
+      );
+
+      // Nếu khác nhau, cập nhật local theo server
+      if (serverCompleted != localCompleted) {
+        if (serverCompleted) {
+          theoryController.markAsCompleted(
+            theoryController.subject,
+            theoryController.grade,
+            widget.lesson.title,
+          );
+        } else {
+          theoryController.markAsUncompleted(
+            theoryController.subject,
+            theoryController.grade,
+            widget.lesson.title,
+          );
+        }
+      }
+
+      setState(() {
+        _isCompleted = serverCompleted;
+      });
+    } catch (e) {
+      print("Error loading completion status from server: $e");
+      // Fallback: sử dụng local storage nếu API fail
+      setState(() {
+        _isCompleted = theoryController.isCompleted(
+          theoryController.subject,
+          theoryController.grade,
+          widget.lesson.title,
+        );
+      });
     }
   }
 
@@ -215,21 +261,81 @@ class _LessonDetailScreenState extends State<LessonDetailScreen>
     }
   }
 
-  void _toggleCompletion() {
-    theoryController.toggleComplete(
-      theoryController.subject,
-      theoryController.grade,
-      widget.lesson.title,
-    );
+  // HÀM MỚI: Xử lý hoàn thành bài học với API
+  Future<void> _toggleCompletion() async {
+    if (_isCompleting) return; // Ngăn chặn nhiều lần nhấn
+
+    // Debug log - SỬA LẠI: sử dụng getter đúng
+    print('🎯 Toggle completion for lesson: ${widget.lesson.id}');
+    print('📊 Current auth status:');
+    print('   - UserId: ${progressController.userId.value}'); // SỬA: .value
+    print('   - IsLoggedIn: ${progressController.isLoggedIn.value}'); // SỬA: .value
+
     setState(() {
-      _isCompleted = theoryController.isCompleted(
+      _isCompleting = true;
+    });
+
+    try {
+      if (_isCompleted) {
+        // Hủy hoàn thành
+        await progressController.uncompleteLesson(widget.lesson.id);
+        theoryController.markAsUncompleted(
+          theoryController.subject,
+          theoryController.grade,
+          widget.lesson.title,
+        );
+      } else {
+        // Đánh dấu hoàn thành
+        await progressController.completeLesson(widget.lesson.id);
+        theoryController.markAsCompleted(
+          theoryController.subject,
+          theoryController.grade,
+          widget.lesson.title,
+        );
+      }
+
+      setState(() {
+        _isCompleted = !_isCompleted;
+        _updated = true;
+      });
+
+      Get.snackbar(
+        'Thành công',
+        _isCompleted ? 'Đã đánh dấu bài học hoàn thành' : 'Đã hủy đánh dấu hoàn thành',
+        duration: Duration(seconds: 2),
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+      );
+
+    } catch (e) {
+      Get.snackbar(
+        'Lỗi',
+        'Không thể cập nhật trạng thái: ${e.toString()}',
+        duration: Duration(seconds: 3),
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+
+      theoryController.toggleComplete(
         theoryController.subject,
         theoryController.grade,
         widget.lesson.title,
       );
-      _updated = true; // ✅ đánh dấu đã thay đổi
-    });
+
+      setState(() {
+        _isCompleted = theoryController.isCompleted(
+          theoryController.subject,
+          theoryController.grade,
+          widget.lesson.title,
+        );
+      });
+    } finally {
+      setState(() {
+        _isCompleting = false;
+      });
+    }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -237,7 +343,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen>
 
     return WillPopScope(
       onWillPop: () async {
-        Get.back(result: _updated); // ✅ trả về kết quả khi back
+        Get.back(result: _updated);
         return false;
       },
       child: Scaffold(
@@ -282,13 +388,24 @@ class _LessonDetailScreenState extends State<LessonDetailScreen>
                 child: ScaleTransition(
                   scale: _animController,
                   child: ElevatedButton.icon(
-                    onPressed: _isCompleted ? null : _toggleCompletion,
-                    icon: Icon(
+                    onPressed: _isCompleting ? null : _toggleCompletion, // SỬA: dùng hàm mới
+                    icon: _isCompleting
+                        ? SizedBox(
+                      width: 20.sp,
+                      height: 20.sp,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.w,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                        : Icon(
                       _isCompleted ? Icons.check_circle : Icons.done_all_outlined,
                       size: 20.sp,
                     ),
                     label: Text(
-                      _isCompleted ? "Đã hoàn thành" : "Đánh dấu hoàn thành",
+                      _isCompleting
+                          ? "Đang xử lý..."
+                          : (_isCompleted ? "Đã hoàn thành" : "Đánh dấu hoàn thành"),
                       style: TextStyle(fontSize: 14.sp),
                     ),
                     style: ElevatedButton.styleFrom(
