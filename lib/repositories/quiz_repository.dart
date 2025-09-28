@@ -6,6 +6,9 @@ import '../model/quiz_model.dart';
 import '../model/question_model.dart';
 import '../model/choice_model.dart';
 import '../model/quiz_result_model.dart';
+import '../model/quiz_progress_model.dart';
+import '../model/quiz_daily_stat_model.dart';
+
 
 class QuizRepository {
   final String baseUrl = "http://192.168.1.219:8080/api/quizzes";
@@ -244,6 +247,69 @@ class QuizRepository {
       return {};
     } else {
       throw Exception("Failed to load best score. Status: ${response.statusCode}, Body: ${response.body}");
+    }
+  }
+  Future<QuizProgressModel> getQuizProgress({
+    required int userId,
+    int? gradeId,
+    int? subjectId,
+    int? quizTypeId,
+    int? chapterId,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final authToken = prefs.getString('authToken');
+
+    final uri = Uri.parse("$baseUrl/progress").replace(queryParameters: {
+      'userId': '$userId',
+      if (gradeId != null) 'gradeId': '$gradeId',
+      if (subjectId != null) 'subjectId': '$subjectId',
+      if (quizTypeId != null) 'quizTypeId': '$quizTypeId',
+      if (chapterId != null) 'chapterId': '$chapterId',
+    });
+
+    final res = await http.get(uri, headers: {
+      "Content-Type": "application/json",
+      if (authToken != null && authToken.isNotEmpty) "Authorization": "Bearer $authToken",
+    });
+
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      return QuizProgressModel.fromJson(data);
+    } else {
+      throw Exception("Failed to load quiz progress: ${res.statusCode} ${res.body}");
+    }
+  }
+
+  Future<List<QuizDailyStatModel>> getQuizDailyAccuracy({
+    required int userId,
+    int days = 7,
+    int? gradeId,
+    int? subjectId,
+    int? quizTypeId,
+    int? chapterId,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final authToken = prefs.getString('authToken');
+
+    final uri = Uri.parse("$baseUrl/history").replace(queryParameters: {
+      'userId': '$userId',
+      'days': '$days',
+      if (gradeId != null) 'gradeId': '$gradeId',
+      if (subjectId != null) 'subjectId': '$subjectId',
+      if (quizTypeId != null) 'quizTypeId': '$quizTypeId',
+      if (chapterId != null) 'chapterId': '$chapterId',
+    });
+
+    final res = await http.get(uri, headers: {
+      "Content-Type": "application/json",
+      if (authToken != null && authToken.isNotEmpty) "Authorization": "Bearer $authToken",
+    });
+
+    if (res.statusCode == 200) {
+      final List<dynamic> arr = jsonDecode(res.body);
+      return arr.map((e) => QuizDailyStatModel.fromJson(e as Map<String, dynamic>)).toList();
+    } else {
+      throw Exception("Failed to load quiz history: ${res.statusCode} ${res.body}");
     }
   }
 }

@@ -51,6 +51,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _loadProgressData() async {
     await progressController.fetchProgressByUser();
+    await progressController.loadQuizStats(days: 7); // <-- gọi thêm
   }
 
   // Get color for subject
@@ -446,11 +447,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               SizedBox(height: 16.h),
 
               // Quiz History
-              _QuizHistoryStatic(),
-              SizedBox(height: 16.h),
-
-              // Quiz Progress
-              _QuizProgressCardStatic(quizPercent01: 0.65),
+              _QuizHistoryFromApi(),
               SizedBox(height: 16.h),
 
               // Overall Progress Card
@@ -666,150 +663,158 @@ class _StatChip extends StatelessWidget {
 }
 
 
-/// ========================= QUIZ % (STATIC) =========================
-class _QuizProgressCardStatic extends StatelessWidget {
-  final double quizPercent01; // 0..1
-  const _QuizProgressCardStatic({required this.quizPercent01});
+class _QuizHistoryFromApi extends StatelessWidget {
+  const _QuizHistoryFromApi({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final pct = (quizPercent01 * 100).clamp(0, 100).toStringAsFixed(0);
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Tiến độ Quiz',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: quizPercent01.clamp(0.0, 1.0),
-                minHeight: 10,
-                backgroundColor: Colors.blue.withOpacity(0.15),
-                color: Colors.blue,
+    final pc = Get.find<ProgressController>();
+
+    return Obx(() {
+      if (pc.isQuizLoading.value) {
+        return const Card(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+        );
+      }
+
+      final data = pc.quizDaily;
+      if (data.isEmpty) {
+        return const Card(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Text('Chưa có dữ liệu quiz trong thời gian gần đây'),
+          ),
+        );
+      }
+
+      final days = data.map((e) => e.day).toList();
+      final percents = data.map((e) => e.percent.clamp(0.0, 100.0)).toList();
+      final avg = percents.isEmpty ? 0.0 : percents.reduce((a, b) => a + b) / percents.length;
+
+      return Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Lịch sử Quiz (tỉ lệ đúng %)',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Đã hoàn thành $pct% số quiz',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+              const SizedBox(height: 10),
+              Text(
+                'Điểm trung bình: ${avg.toStringAsFixed(0)}%',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 260, // khung cao hơn chút cho thoáng
+                child: BarChart(
+                  BarChartData(
+                    minY: 0,
+                    maxY: 120, // nới trần để 100% không chạm đỉnh
+                    alignment: BarChartAlignment.spaceAround,
+                    borderData: FlBorderData(show: false),
 
-/// ========================= QUIZ HISTORY (STATIC BAR CHART) =========================
-class _QuizHistoryStatic extends StatelessWidget {
-  const _QuizHistoryStatic({super.key});
+                    // Đường tham chiếu 100% để "đều hàng"
+                    extraLinesData: ExtraLinesData(horizontalLines: [
+                      HorizontalLine(
+                        y: 100,
+                        dashArray: [6, 4],
+                        strokeWidth: 1,
+                        color: Colors.grey.withOpacity(0.6),
+                      ),
+                    ]),
 
-  // Tạo data cứng: 7 ngày gần nhất với tỉ lệ đúng ngẫu nhiên
-  List<DateTime> _last7Days() {
-    final today = DateTime.now();
-    return List.generate(
-        7,
-            (i) => DateTime(today.year, today.month, today.day)
-            .subtract(Duration(days: 6 - i)));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final days = _last7Days();
-    // dữ liệu % đúng (0..100) cứng để test
-    final List<double> percents = [40, 55, 62, 80, 70, 50, 90];
-
-    final avg = percents.isEmpty
-        ? 0.0
-        : percents.reduce((a, b) => a + b) / percents.length;
-
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Lịch sử Quiz (tỉ lệ đúng %)',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Điểm trung bình: ${avg.toStringAsFixed(0)}%',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 220,
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: 100,
-                  barTouchData: BarTouchData(enabled: true),
-                  titlesData: FlTitlesData(
-                    leftTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: true, reservedSize: 28),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 1,
-                        getTitlesWidget: (value, meta) {
-                          final idx = value.toInt();
-                          if (idx < 0 || idx >= days.length) {
-                            return const SizedBox.shrink();
-                          }
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 4.0),
-                            child: Text(
-                              DateFormat('dd/MM').format(days[idx]),
-                              style: const TextStyle(fontSize: 10),
-                            ),
+                    // Tooltip khi chạm vào cột
+                    barTouchData: BarTouchData(
+                      enabled: true,
+                      touchTooltipData: BarTouchTooltipData(
+                        tooltipBorderRadius: BorderRadius.circular(6),
+                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                          final pct = (rod.toY / 1).clamp(0, 120); // giá trị hiển thị
+                          return BarTooltipItem(
+                            '${pct.toStringAsFixed(0)}%',
+                            const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
                           );
                         },
                       ),
                     ),
-                    rightTitles:
-                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles:
-                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  ),
-                  gridData: FlGridData(show: true, drawVerticalLine: false),
-                  barGroups: List.generate(days.length, (i) {
-                    final p = percents[i].clamp(0.0, 100.0);
-                    return BarChartGroupData(
-                      x: i,
-                      barRods: [
-                        BarChartRodData(
-                          toY: p,
-                          width: 14,
-                          color: Colors.blue,
-                          borderRadius: BorderRadius.circular(4),
-                          backDrawRodData: BackgroundBarChartRodData(
-                            show: true,
-                            toY: 100,
-                            color: Colors.blue.withOpacity(0.15),
-                          ),
+
+                    titlesData: FlTitlesData(
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 34,
+                          interval: 20, // 0,20,40,60,80,100
+                          getTitlesWidget: (value, _) {
+                            // Ẩn nhãn > 100 để không gây rối khi maxY = 120
+                            if (value > 100) return const SizedBox.shrink();
+                            return Text('${value.toInt()}%');
+                          },
                         ),
-                      ],
-                    );
-                  }),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (value, _) {
+                            final idx = value.toInt();
+                            if (idx < 0 || idx >= days.length) return const SizedBox.shrink();
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Text(
+                                DateFormat('dd/MM').format(days[idx]),
+                                style: const TextStyle(fontSize: 10),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    ),
+
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      horizontalInterval: 20,
+                      // Chỉ kẻ tới 100 để đỡ rối phần trên
+                      checkToShowHorizontalLine: (value) => value % 20 == 0 && value <= 100,
+                    ),
+
+                    barGroups: List.generate(days.length, (i) {
+                      final p = percents[i];              // % thật (0..100)
+                      const scale = 0.92;                 // 💡 thu nhỏ nhẹ chiều cao cột ~8%
+                      final toY = (p * scale).clamp(0.0, 119.0); // không vượt trần
+
+                      return BarChartGroupData(
+                        x: i,
+                        barRods: [
+                          BarChartRodData(
+                            toY: toY,
+                            width: 14,
+                            color: Colors.blue,
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(6),
+                              topRight: Radius.circular(6),
+                            ),
+                            backDrawRodData: BackgroundBarChartRodData(show: false),
+                          ),
+                        ],
+                      );
+                    }),
+                  ),
                 ),
               ),
-            ),
           ],
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 }

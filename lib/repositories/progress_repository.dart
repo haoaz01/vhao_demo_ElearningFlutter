@@ -76,6 +76,76 @@ class ProgressRepository {
     }
   }
 
+  // ===================== QUIZ HISTORY (accuracy by day) =====================
+  // Host gốc (khác với _baseUrl đang trỏ /api/progress)
+  static const String _host = 'http://192.168.1.219:8080';
+
+  /// Lấy lịch sử tỉ lệ đúng theo ngày.
+  /// Trả về List<Map> mỗi phần tử có: { day: DateTime, correct: int, total: int, percent: double }
+  Future<List<Map<String, dynamic>>> getQuizDailyHistory({
+    required int userId,
+    int days = 7,
+    int? gradeId,
+    int? subjectId,
+    int? quizTypeId,
+    int? chapterId,
+  }) async {
+    try {
+      final token = await _getToken();
+      if (token == null) {
+        throw Exception('Token not found');
+      }
+
+      final uri = Uri.parse('$_host/api/quizzes/history').replace(
+        queryParameters: {
+          'userId': '$userId',
+          'days': '$days',
+          if (gradeId != null) 'gradeId': '$gradeId',
+          if (subjectId != null) 'subjectId': '$subjectId',
+          if (quizTypeId != null) 'quizTypeId': '$quizTypeId',
+          if (chapterId != null) 'chapterId': '$chapterId',
+        },
+      );
+
+      final headers = {
+        'Authorization': 'Bearer $token',
+      };
+
+      // Debug (giống style hiện có)
+      print('🚀 Request Quiz History: GET $uri');
+      print('   - Headers: $headers');
+
+      final res = await http.get(uri, headers: headers);
+
+      print('📥 Quiz History Response: ${res.statusCode}');
+      if (res.statusCode != 200) {
+        print('   - Body: ${res.body}');
+        throw Exception('History failed: ${res.statusCode}');
+      }
+
+      final list = (jsonDecode(res.body) as List).cast<Map<String, dynamic>>();
+
+      // Chuẩn hoá về Map với kiểu mạnh:
+      final parsed = list.map((e) {
+        final day = DateTime.parse(e['day'] as String);
+        final correct = (e['correct'] as num).toInt();
+        final total = (e['total'] as num).toInt();
+        final percent = (e['percent'] as num).toDouble().clamp(0.0, 100.0);
+        return {
+          'day': day,
+          'correct': correct,
+          'total': total,
+          'percent': percent,
+        };
+      }).toList();
+
+      return parsed;
+    } catch (e) {
+      print('💥 Error in getQuizDailyHistory: $e');
+      rethrow;
+    }
+  }
+
   // Đánh dấu bài học đã hoàn thành
 // Đánh dấu bài học đã hoàn thành
   Future<LessonCompletion> completeLesson(int userId, int lessonId) async {

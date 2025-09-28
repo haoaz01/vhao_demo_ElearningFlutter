@@ -5,6 +5,10 @@ import '../model/progress_model.dart';
 import '../repositories/progress_repository.dart';
 import '../repositories/streak_repository.dart';
 import '../screens/streak_screen.dart';
+import '../repositories/quiz_repository.dart';
+import '../model/quiz_progress_model.dart';
+import '../model/quiz_daily_stat_model.dart';
+import 'auth_controller.dart';
 
 class ProgressController extends GetxController {
   // Repositories
@@ -25,6 +29,13 @@ class ProgressController extends GetxController {
   final RxInt bestStreak = 0.obs;
   final RxInt totalDays = 0.obs;
   final Rxn<DateTime> lastActive = Rxn<DateTime>();
+
+  // Quiz progress
+  final QuizRepository quizRepository = QuizRepository();
+
+  final Rxn<QuizProgressModel> quizProgress = Rxn<QuizProgressModel>();
+  final RxList<QuizDailyStatModel> quizDaily = <QuizDailyStatModel>[].obs;
+  final RxBool isQuizLoading = false.obs;
 
   /// Trigger UI refreshes for streak-related widgets (use `ever(statsVersion, ...)`)
   final RxInt statsVersion = 0.obs;
@@ -282,6 +293,41 @@ class ProgressController extends GetxController {
       return await progressRepository.getProgressByGrade(uid, grade);
     } catch (_) {
       return <Progress>[];
+    }
+  }
+
+  Future<void> loadQuizStats({int days = 7}) async {
+    try {
+      isQuizLoading.value = true;
+      final prefs = await SharedPreferences.getInstance();
+      final uid = prefs.getInt('userId');
+      if (uid == null) throw Exception('Missing userId');
+
+      // Nếu có chọn lớp, parse sang int để truyền gradeId
+      int? gradeId;
+      if (Get.isRegistered<AuthController>()) {
+        final auth = Get.find<AuthController>();
+        gradeId = int.tryParse(auth.selectedClass.value);
+      }
+
+      final qp = await quizRepository.getQuizProgress(
+        userId: uid,
+        gradeId: gradeId,
+      );
+      final hist = await quizRepository.getQuizDailyAccuracy(
+        userId: uid,
+        days: days,
+        gradeId: gradeId,
+      );
+
+      quizProgress.value = qp;
+      quizDaily.assignAll(hist);
+    } catch (e) {
+      print('⚠️ loadQuizStats error: $e');
+      quizProgress.value = null;
+      quizDaily.clear();
+    } finally {
+      isQuizLoading.value = false;
     }
   }
 
