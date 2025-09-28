@@ -665,6 +665,7 @@ class _StatChip extends StatelessWidget {
   }
 }
 
+
 /// ========================= QUIZ % (STATIC) =========================
 class _QuizProgressCardStatic extends StatelessWidget {
   final double quizPercent01; // 0..1

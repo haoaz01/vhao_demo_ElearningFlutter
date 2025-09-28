@@ -1,10 +1,10 @@
 import 'package:get/get.dart' hide Progress;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../utils/streak_utils.dart';
 import '../model/progress_model.dart';
 import '../repositories/progress_repository.dart';
 import '../repositories/streak_repository.dart';
+import '../screens/streak_screen.dart';
 
 class ProgressController extends GetxController {
   // Repositories
@@ -89,39 +89,24 @@ class ProgressController extends GetxController {
         return;
       }
 
-      // Server call
-      final res = await streakRepository.getStreak(uid /*, token: token*/);
+      final res = await streakRepository.getStreak(uid);
       if (res['statusCode'] == 200 && res['data'] != null) {
         final m = Map<String, dynamic>.from(res['data'] as Map);
 
-        currentStreak.value = (m['streakCount'] ?? m['currentStreak'] ?? 0) as int;
+        currentStreak.value = (m['currentStreak'] ?? 0) as int;
         bestStreak.value    = (m['bestStreak'] ?? 0) as int;
         totalDays.value     = (m['totalDays'] ?? 0) as int;
-        lastActive.value    = DateTime.tryParse(m['lastActiveDate']);
-
-
-        final raw = m['lastActiveDate'];
-        final chain = buildStreakChain(
-          currentStreak: currentStreak.value,
-          lastActiveDate: lastActive.value,
-        );
-        if (raw is String) {
-          lastActive.value = DateTime.tryParse(raw);
-        } else {
-          lastActive.value = null;
-        }
+        lastActive.value    = DateTime.tryParse(m['lastActiveDate'] ?? '');
 
         streakLoaded.value = true;
-        statsVersion.value++;
+        statsVersion.value++;           // ❗️để UI nghe thay đổi
       } else {
         streakLoaded.value = false;
       }
 
-      // Đảm bảo local key tồn tại (không ảnh hưởng server streak)
-      await readStudyDays();
+      await readStudyDays();            // optional local cache
     } catch (e) {
       streakLoaded.value = false;
-      // ignore: avoid_print
       print('⚠️ loadStreak error: $e');
     }
   }
@@ -133,6 +118,7 @@ class ProgressController extends GetxController {
       if (uid <= 0) return;
 
       final res = await streakRepository.touchStreak(uid);
+      print('touch status=${res['statusCode']}, body=${res['data']}');
       if (res['statusCode'] == 200) {
         await markStudiedOn();      // <— thêm dòng này
         await loadStreak(); // refresh

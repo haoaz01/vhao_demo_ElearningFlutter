@@ -43,7 +43,6 @@ class _StreakScreenState extends State<StreakScreen> {
   }
 
   Future<void> _init() async {
-    // nạp streak từ BE
     await progressController.loadStreak();
     await _loadLocalDays();
   }
@@ -72,7 +71,6 @@ class _StreakScreenState extends State<StreakScreen> {
     });
   }
 
-  /// Cách A: build chuỗi ngày theo server (streakCount + lastActiveDate)
   List<DateTime> _buildStreakChain({
     required int currentStreak,
     required DateTime? lastActiveDate,
@@ -85,12 +83,10 @@ class _StreakScreenState extends State<StreakScreen> {
     final dToday = day(now ?? today);
     final anchor = day(lastActiveDate);
 
-    // nếu anchor < yesterday => đã đứt
     if (anchor.isBefore(dToday.subtract(const Duration(days: 1)))) {
       return [];
     }
 
-    // build list từ (anchor - (len-1)) đến anchor
     final len = currentStreak;
     return List.generate(len, (i) {
       final offset = len - 1 - i;
@@ -104,9 +100,17 @@ class _StreakScreenState extends State<StreakScreen> {
     return chain.any((c) => _dayKey(c) == key);
   }
 
+  List<DateTime> _currentChain() {
+    return _buildStreakChain(
+      currentStreak: progressController.currentStreak.value,
+      lastActiveDate: progressController.lastActive.value,
+      now: widget.overrideNow,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    const primary = Colors.purple;
+    const primary = Colors.green;
 
     final todayKey = _dayKey(now);
     final monday = _dayKey(todayKey.subtract(Duration(days: todayKey.weekday - 1)));
@@ -116,34 +120,28 @@ class _StreakScreenState extends State<StreakScreen> {
     final daysInMonth = DateTime(currentYear, currentMonth + 1, 0).day;
 
     return Scaffold(
-      backgroundColor: Colors.purple[50],
+      backgroundColor: Colors.green[50],
       appBar: AppBar(
         backgroundColor: primary,
         title: const Text('🔥 Chuỗi Ngày Học', style: TextStyle(color: Colors.white)),
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
-          // Nút “touch” streak hôm nay (gọi BE) rồi reload
           IconButton(
             icon: const Icon(Icons.local_fire_department, color: Colors.white),
             tooltip: 'Chạm tính streak hôm nay',
             onPressed: () async {
               await progressController.touchStreakToday();
               await progressController.loadStreak();
-              await _loadLocalDays(); // nếu vẫn muốn sync local
+              await _loadLocalDays();
             },
           )
         ],
       ),
       body: ListView(
         children: [
-          // ===== Chuỗi ngày theo server (Cách A) =====
+          // ===== Strip ngang =====
           Obx(() {
-            final chain = _buildStreakChain(
-              currentStreak: progressController.currentStreak.value,
-              lastActiveDate: progressController.lastActive.value,
-              now: widget.overrideNow,
-            );
-
+            final chain = _currentChain();
             if (chain.isEmpty) {
               return Padding(
                 padding: const EdgeInsets.all(12),
@@ -155,7 +153,6 @@ class _StreakScreenState extends State<StreakScreen> {
                 ),
               );
             }
-
             return SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -168,7 +165,7 @@ class _StreakScreenState extends State<StreakScreen> {
                     decoration: BoxDecoration(
                       color: Colors.orange,
                       borderRadius: BorderRadius.circular(12),
-                      border: isToday ? Border.all(color: Colors.purple, width: 2) : null,
+                      border: isToday ? Border.all(color: Colors.green, width: 2) : null,
                       boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
                     ),
                     child: Text("${d.day}/${d.month}",
@@ -179,7 +176,7 @@ class _StreakScreenState extends State<StreakScreen> {
             );
           }),
 
-          // ===== Header số liệu từ API =====
+          // ===== Header số liệu =====
           Card(
             margin: const EdgeInsets.all(12),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -222,16 +219,11 @@ class _StreakScreenState extends State<StreakScreen> {
             ),
           ),
 
-          // ===== Weekly strip (ưu tiên chain server) =====
+          // ===== Weekly strip =====
           Obx(() {
-            final chain = _buildStreakChain(
-              currentStreak: progressController.currentStreak.value,
-              lastActiveDate: progressController.lastActive.value,
-              now: widget.overrideNow,
-            );
-
+            final chain = _currentChain();
             return Card(
-              color: Colors.purple[100],
+              color: Colors.green[100],
               margin: const EdgeInsets.symmetric(horizontal: 12),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               elevation: 4,
@@ -247,12 +239,8 @@ class _StreakScreenState extends State<StreakScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: List.generate(7, (i) {
                         final d = weekDays[i];
-                        // Cách A: learned nếu nằm trong chain server
-                        bool learned = _isInChain(d, chain);
-                        // nếu muốn kết hợp local, bật dòng dưới:
-                        // learned = learned || studyDays.contains(_dayKey(d));
-                        final isToday = d == todayKey;
-                        return _streakDay(labels[i], learned, isToday: isToday);
+                        final learned = _isInChain(d, chain);
+                        return _streakDay(labels[i], learned, isToday: d == todayKey);
                       }),
                     ),
                   ],
@@ -261,20 +249,14 @@ class _StreakScreenState extends State<StreakScreen> {
             );
           }),
 
-          // ===== Monthly calendar (ưu tiên chain server) =====
+          // ===== Monthly calendar =====
           Obx(() {
-            final chain = _buildStreakChain(
-              currentStreak: progressController.currentStreak.value,
-              lastActiveDate: progressController.lastActive.value,
-              now: widget.overrideNow,
-            );
-
+            final chain = _currentChain();
             final learnedDaysThisMonth = List.generate(daysInMonth, (i) => i + 1)
                 .where((day) => _isInChain(DateTime(currentYear, currentMonth, day), chain))
                 .length;
-
             return Card(
-              color: Colors.purple[100],
+              color: Colors.green[100],
               margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               elevation: 3,
@@ -309,21 +291,19 @@ class _StreakScreenState extends State<StreakScreen> {
                     itemBuilder: (_, i) {
                       final day = i + 1;
                       final date = _dayKey(DateTime(currentYear, currentMonth, day));
-                      // Cách A: learned nếu trong chain
-                      bool learned = _isInChain(date, chain);
-                      // nếu muốn kết hợp local:
-                      // learned = learned || studyDays.contains(date);
+                      final learned = _isInChain(date, chain);
                       final isToday = date == todayKey;
                       return Container(
                         decoration: BoxDecoration(
                           color: learned ? Colors.orange : Colors.grey[300],
                           shape: BoxShape.circle,
-                          border: isToday ? Border.all(color: Colors.purple, width: 2.5) : null,
+                          border: isToday ? Border.all(color: Colors.green, width: 2.5) : null,
                         ),
                         child: Center(
                           child: learned
                               ? const Icon(Icons.local_fire_department, color: Colors.white, size: 18)
-                              : Text('$day', style: const TextStyle(color: Colors.black, fontSize: 12)),
+                              : Text('$day',
+                              style: const TextStyle(color: Colors.black, fontSize: 12)),
                         ),
                       );
                     },
@@ -346,7 +326,7 @@ class _StreakScreenState extends State<StreakScreen> {
           decoration: BoxDecoration(
             color: learned ? Colors.orange : Colors.grey[300],
             shape: BoxShape.circle,
-            border: isToday ? Border.all(color: Colors.purple, width: 3) : null,
+            border: isToday ? Border.all(color: Colors.green, width: 3) : null,
           ),
           child: learned
               ? const Icon(Icons.local_fire_department, color: Colors.white, size: 20)
