@@ -4,9 +4,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../model/lesson_completion_model.dart';
 import '../model/progress_model.dart';
+import '../controllers/auth_controller.dart';
 
 class ProgressRepository {
   static const String _baseUrl = 'http://192.168.1.219:8080/api/progress';
+  static const String _host = 'http://192.168.1.219:8080';
+
+
+  // --- THÊM PUBLIC GETTER/HELPER (mới) ---
+  static String get host => _host;                         // http://...:8080
+  static String get progressBaseUrl => _baseUrl;           // .../api/progress
+  static String get authBase => '$host/api/auth';       // Nếu nơi khác cần /api/progress
+  static Future<String?> getToken() async {           // Lấy token tập trung
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('authToken');
+  }
+
   int min(int a, int b) => a < b ? a : b;
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -78,7 +91,6 @@ class ProgressRepository {
 
   // ===================== QUIZ HISTORY (accuracy by day) =====================
   // Host gốc (khác với _baseUrl đang trỏ /api/progress)
-  static const String _host = 'http://192.168.1.219:8080';
 
   /// Lấy lịch sử tỉ lệ đúng theo ngày.
   /// Trả về List<Map> mỗi phần tử có: { day: DateTime, correct: int, total: int, percent: double }

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import '../controllers/auth_controller.dart';
+import '../screens/edit_profile_screen.dart';
+
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -39,6 +41,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Hồ sơ'),
+        backgroundColor: Colors.white,
+        elevation: 1,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit),
+            tooltip: 'Chỉnh sửa hồ sơ',
+            onPressed: () async {
+              // tải hồ sơ nếu bạn có hàm này trong AuthController
+              if (authController.hasListeners) { /* an toàn, optional */ }
+              // gọi loadMe() nếu bạn đã implement (không bắt buộc)
+              try { await authController.loadMe(); } catch (_) {}
+              // Cách 1: đi thẳng bằng widget (KHÔNG cần khai báo route)
+              Get.to(() => const EditProfileScreen());
+
+              // Cách 2 (nếu bạn thích dùng route tên): Get.toNamed('/profile_edit');
+            },
+          ),
+        ],
+      ),
       body: Obx(() {
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -142,7 +165,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ListTile(
                       leading: const Icon(Icons.phone, color: Colors.green),
                       title: const Text("Phone"),
-                      subtitle: const Text("+84 123 456 789"),
+                      subtitle: Obx(() => Text(
+                        authController.phone.value.isEmpty ? 'Chưa cập nhật' : authController.phone.value,
+                      )),
                     ),
                     const Divider(height: 1),
                     ListTile(
