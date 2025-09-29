@@ -1,7 +1,11 @@
-import 'package:get/get.dart' hide Progress;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
+import 'package:get/get.dart' hide Progress;
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
 import '../model/progress_model.dart';
+import '../repositories/auth_repository.dart';
 import '../repositories/progress_repository.dart';
 import '../repositories/streak_repository.dart';
 import '../screens/streak_screen.dart';
@@ -11,6 +15,7 @@ import '../model/quiz_daily_stat_model.dart';
 import 'auth_controller.dart';
 
 class ProgressController extends GetxController {
+
   // Repositories
   final ProgressRepository progressRepository = ProgressRepository();
   final StreakRepository streakRepository = StreakRepository();
@@ -34,7 +39,7 @@ class ProgressController extends GetxController {
   final QuizRepository quizRepository = QuizRepository();
 
   final Rxn<QuizProgressModel> quizProgress = Rxn<QuizProgressModel>();
-  final RxList<QuizDailyStatModel> quizDaily = <QuizDailyStatModel>[].obs;
+  final RxList<QuizDailyStat> quizDaily = <QuizDailyStat>[].obs;
   final RxBool isQuizLoading = false.obs;
 
   /// Trigger UI refreshes for streak-related widgets (use `ever(statsVersion, ...)`)
@@ -45,6 +50,8 @@ class ProgressController extends GetxController {
 
   // ===== Local study-days (optional local cache) =====
   static const String _studyDaysKey = 'study_days';
+
+  late final AuthController auth;
 
   DateTime _dayKey(DateTime d) => DateTime(d.year, d.month, d.day);
 
@@ -62,12 +69,16 @@ class ProgressController extends GetxController {
     final d = int.parse(parts[2]);
     return DateTime(y, m, d);
   }
+
   // ===== END Local study-days =====
 
 
   @override
   void onInit() {
     super.onInit();
+    auth = Get.isRegistered<AuthController>()
+        ? Get.find<AuthController>()
+        : Get.put(AuthController());
     _loadUserData();
     loadStreak(); // ✅ chỉ còn 1 hàm, không lỗi tham số
   }
@@ -79,7 +90,9 @@ class ProgressController extends GetxController {
     isLoggedIn.value = prefs.getBool('isLoggedIn') ?? false;
     // Debug
     // ignore: avoid_print
-    print("🔐 ProgressController - userId=${userId.value}, isLoggedIn=${isLoggedIn.value}");
+    print(
+        "🔐 ProgressController - userId=${userId.value}, isLoggedIn=${isLoggedIn
+            .value}");
   }
 
   // Always refresh userId from SharedPreferences (source of truth)
@@ -105,17 +118,17 @@ class ProgressController extends GetxController {
         final m = Map<String, dynamic>.from(res['data'] as Map);
 
         currentStreak.value = (m['currentStreak'] ?? 0) as int;
-        bestStreak.value    = (m['bestStreak'] ?? 0) as int;
-        totalDays.value     = (m['totalDays'] ?? 0) as int;
-        lastActive.value    = DateTime.tryParse(m['lastActiveDate'] ?? '');
+        bestStreak.value = (m['bestStreak'] ?? 0) as int;
+        totalDays.value = (m['totalDays'] ?? 0) as int;
+        lastActive.value = DateTime.tryParse(m['lastActiveDate'] ?? '');
 
         streakLoaded.value = true;
-        statsVersion.value++;           // ❗️để UI nghe thay đổi
+        statsVersion.value++; // ❗️để UI nghe thay đổi
       } else {
         streakLoaded.value = false;
       }
 
-      await readStudyDays();            // optional local cache
+      await readStudyDays(); // optional local cache
     } catch (e) {
       streakLoaded.value = false;
       print('⚠️ loadStreak error: $e');
@@ -123,21 +136,21 @@ class ProgressController extends GetxController {
   }
 
   /// Chạm streak hôm nay trên server, sau đó refresh lại số liệu.
-  Future<void> touchStreakToday() async {
-    try {
-      final uid = await _getUserId();
-      if (uid <= 0) return;
-
-      final res = await streakRepository.touchStreak(uid);
-      print('touch status=${res['statusCode']}, body=${res['data']}');
-      if (res['statusCode'] == 200) {
-        await markStudiedOn();      // <— thêm dòng này
-        await loadStreak(); // refresh
-      }
-    } catch (_) {
-      // swallow, UI không cần crash
-    }
-  }
+  // Future<void> touchStreakToday() async {
+  //   try {
+  //     final uid = await _getUserId();
+  //     if (uid <= 0) return;
+  //
+  //     final res = await streakRepository.touchStreak(uid);
+  //     print('touch status=${res['statusCode']}, body=${res['data']}');
+  //     if (res['statusCode'] == 200) {
+  //       await markStudiedOn();      // <— thêm dòng này
+  //       await loadStreak(); // refresh
+  //     }
+  //   } catch (_) {
+  //     // swallow, UI không cần crash
+  //   }
+  // }
 
   // ===== Local study-days helpers (tuỳ chọn) =====
   /// Trả về tập các ngày học (mỗi ngày chuẩn hoá 00:00)
@@ -166,16 +179,18 @@ class ProgressController extends GetxController {
   /// Ghi đè toàn bộ từ server (nếu cần dùng)
   Future<void> _overwriteStudyDays(Set<DateTime> days) async {
     final prefs = await SharedPreferences.getInstance();
-    final list = days.map(_fmt).toList()..sort();
+    final list = days.map(_fmt).toList()
+      ..sort();
     await prefs.setStringList(_studyDaysKey, list);
     streakLoaded.value = true;
     statsVersion.value++;
   }
+
   // ===== END Streak API =====
 
   // ===== Progress APIs =====
   Future<void> completeLesson(int lessonId) async {
-    await touchStreakToday(); // ✅ cập nhật streak server khi hoàn thành bài
+    // await touchStreakToday(); // ✅ cập nhật streak server khi hoàn thành bài
 
     try {
       isLoading.value = true;
@@ -247,7 +262,8 @@ class ProgressController extends GetxController {
     try {
       // ignore: avoid_print
       print("🌐 Checking lesson completion from API...");
-      final completed = await progressRepository.checkLessonCompletion(uid, lessonId);
+      final completed = await progressRepository.checkLessonCompletion(
+          uid, lessonId);
       lessonCompletionStatus[key] = completed;
       // ignore: avoid_print
       print("📚 Lesson $lessonId completion status (API): $completed");
@@ -256,6 +272,17 @@ class ProgressController extends GetxController {
       // ignore: avoid_print
       print("❌ Error checking lesson completion: $e");
       return false;
+    }
+  }
+
+  Future<void> markOnline() async {
+    final uid = await _getUserId();
+    if (uid <= 0) return;
+    final res = await streakRepository.online(
+        uid); // POST /api/streak/{userId}/online
+    // tuỳ chọn load lại:
+    if (res['statusCode'] == 200) {
+      await loadStreak();
     }
   }
 
@@ -299,45 +326,56 @@ class ProgressController extends GetxController {
   Future<void> loadQuizStats({int days = 7}) async {
     try {
       isQuizLoading.value = true;
-      final prefs = await SharedPreferences.getInstance();
-      final uid = prefs.getInt('userId');
-      if (uid == null) throw Exception('Missing userId');
+      final uid = await _getUserId();
+      if (uid <= 0) { quizDaily.clear(); return; }
 
-      // Nếu có chọn lớp, parse sang int để truyền gradeId
-      int? gradeId;
-      if (Get.isRegistered<AuthController>()) {
-        final auth = Get.find<AuthController>();
-        gradeId = int.tryParse(auth.selectedClass.value);
-      }
+      // gọi repo (đã trỏ đúng /api/progress/accuracy/daily)
+      final list = await progressRepository.getQuizDailyHistory(userId: uid, days: days);
 
-      final qp = await quizRepository.getQuizProgress(
-        userId: uid,
-        gradeId: gradeId,
-      );
-      final hist = await quizRepository.getQuizDailyAccuracy(
-        userId: uid,
-        days: days,
-        gradeId: gradeId,
-      );
+      final fetched = list.map((e) => QuizDailyStat(
+        day: e['day'] as DateTime,
+        correctSum: e['correct'] as int,
+        totalSum: e['total'] as int,
+        percentAccuracy: e['percent'] as double,
+      )).toList();
 
-      quizProgress.value = qp;
-      quizDaily.assignAll(hist);
+      final now = DateTime.now();
+      final from = now.subtract(Duration(days: days - 1));
+      final filled = _densifyDays(src: fetched, fromDate: from, toDate: now);
+
+      // gán ra cho chart
+      quizDaily.assignAll(filled);
     } catch (e) {
-      print('⚠️ loadQuizStats error: $e');
-      quizProgress.value = null;
+      print('💥 loadQuizStats error: $e');
       quizDaily.clear();
     } finally {
       isQuizLoading.value = false;
     }
   }
 
-  // Tổng tiến trình trên tất cả các môn
-  double get overallProgress {
-    if (progressList.isEmpty) return 0.0;
-    double totalPercent = 0.0;
-    for (final p in progressList) {
-      totalPercent += p.progressPercent;
+  List<QuizDailyStat> _densifyDays({
+    required List<QuizDailyStat> src,
+    required DateTime fromDate,
+    required DateTime toDate,
+  }) {
+    // key theo "ngày" (00:00)
+    DateTime dayKey(DateTime d) => DateTime(d.year, d.month, d.day);
+    final map = {for (final p in src) dayKey(p.day): p};
+
+    final out = <QuizDailyStat>[];
+    for (var d = dayKey(fromDate); !d.isAfter(dayKey(toDate)); d = d.add(const Duration(days: 1))) {
+      out.add(
+        map[d] ??
+            QuizDailyStat(
+              day: d,
+              correctSum: 0,
+              totalSum: 0,
+              percentAccuracy: 0.0,
+            ),
+      );
     }
-    return totalPercent / progressList.length;
+    return out;
   }
 }
+
+

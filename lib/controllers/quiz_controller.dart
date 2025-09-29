@@ -1,3 +1,4 @@
+import 'package:flutter_elearning_application/controllers/progress_controller.dart';
 import 'package:get/get.dart';
 import '../model/quiz_history_model.dart';
 import '../model/quiz_model.dart';
@@ -114,6 +115,7 @@ class QuizController extends GetxController {
       }
 
       final result = await quizRepository.submitQuiz(quizId, userAnswers, durationSeconds);
+      Get.find<ProgressController>().loadQuizStats(days: 7);
       lastResult.value = result;
 
       print("✅ Quiz submitted successfully: ${result.score}");

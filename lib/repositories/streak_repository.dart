@@ -11,9 +11,13 @@ class StreakRepository {
     return _get('/streak/$userId');
   }
 
-  Future<Map<String, dynamic>> touchStreak(int userId) async {
-    return _post('/streak/$userId/touch');
+  Future<Map<String, dynamic>> online(int userId) async {
+    return _post('/streak/$userId/online');
   }
+  /// Gọi backend để cập nhật streak (online/lesson/quiz)
+  // Future<Map<String, dynamic>> touchStreak(int userId) async {
+  //   return _post('/streak/$userId/online');
+  // }
 
   Future<Map<String, dynamic>> _get(String path) async {
     final prefs = await SharedPreferences.getInstance();

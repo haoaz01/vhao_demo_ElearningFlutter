@@ -108,50 +108,45 @@ class ProgressRepository {
         throw Exception('Token not found');
       }
 
-      final uri = Uri.parse('$_host/api/quizzes/history').replace(
-        queryParameters: {
-          'userId': '$userId',
-          'days': '$days',
-          if (gradeId != null) 'gradeId': '$gradeId',
-          if (subjectId != null) 'subjectId': '$subjectId',
-          if (quizTypeId != null) 'quizTypeId': '$quizTypeId',
-          if (chapterId != null) 'chapterId': '$chapterId',
-        },
-      );
+      final fromDate = DateTime.now().subtract(Duration(days: days));
+      final uri = Uri.parse('$_baseUrl/accuracy/daily').replace(queryParameters: {
+        'userId': '$userId',
+        'fromDate': fromDate.toIso8601String(),
+        if (gradeId != null) 'gradeId': '$gradeId',
+        if (subjectId != null) 'subjectId': '$subjectId',
+        if (quizTypeId != null) 'quizTypeId': '$quizTypeId',
+        if (chapterId != null) 'chapterId': '$chapterId',
+      });
 
       final headers = {
         'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
       };
 
-      // Debug (giống style hiện có)
-      print('🚀 Request Quiz History: GET $uri');
-      print('   - Headers: $headers');
+      print('🚀 Request Quiz Daily History: GET $uri');
 
       final res = await http.get(uri, headers: headers);
 
-      print('📥 Quiz History Response: ${res.statusCode}');
       if (res.statusCode != 200) {
-        print('   - Body: ${res.body}');
+        print('❌ History failed: ${res.statusCode}, body=${res.body}');
         throw Exception('History failed: ${res.statusCode}');
       }
 
-      final list = (jsonDecode(res.body) as List).cast<Map<String, dynamic>>();
+      final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+      if (decoded['success'] != true) {
+        throw Exception(decoded['message'] ?? 'API returned error');
+      }
 
-      // Chuẩn hoá về Map với kiểu mạnh:
-      final parsed = list.map((e) {
-        final day = DateTime.parse(e['day'] as String);
-        final correct = (e['correct'] as num).toInt();
-        final total = (e['total'] as num).toInt();
-        final percent = (e['percent'] as num).toDouble().clamp(0.0, 100.0);
+      final list = (decoded['data'] as List).cast<Map<String, dynamic>>();
+
+      return list.map((e) {
         return {
-          'day': day,
-          'correct': correct,
-          'total': total,
-          'percent': percent,
+          'day': DateTime.parse(e['day'] as String),
+          'correct': (e['correctSum'] as num).toInt(),
+          'total': (e['totalSum'] as num).toInt(),
+          'percent': (e['percentAccuracy'] as num).toDouble().clamp(0.0, 100.0),
         };
       }).toList();
-
-      return parsed;
     } catch (e) {
       print('💥 Error in getQuizDailyHistory: $e');
       rethrow;

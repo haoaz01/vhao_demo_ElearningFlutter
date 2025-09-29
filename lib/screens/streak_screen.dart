@@ -47,6 +47,7 @@ class _StreakScreenState extends State<StreakScreen> {
     await _loadLocalDays();
   }
 
+
   @override
   void dispose() {
     _statsWorker.dispose();
@@ -130,7 +131,7 @@ class _StreakScreenState extends State<StreakScreen> {
             icon: const Icon(Icons.local_fire_department, color: Colors.white),
             tooltip: 'Chạm tính streak hôm nay',
             onPressed: () async {
-              await progressController.touchStreakToday();
+              // await progressController.touchStreakToday();
               await progressController.loadStreak();
               await _loadLocalDays();
             },

@@ -1,24 +1,22 @@
-class QuizDailyStatModel {
+class QuizDailyStat {
   final DateTime day;
-  final int correct;
-  final int total;
-  final double percent;
+  final int correctSum;
+  final int totalSum;
+  final double percentAccuracy;
 
-  QuizDailyStatModel({
+  QuizDailyStat({
     required this.day,
-    required this.correct,
-    required this.total,
-    required this.percent,
+    required this.correctSum,
+    required this.totalSum,
+    required this.percentAccuracy,
   });
 
-  factory QuizDailyStatModel.fromJson(Map<String, dynamic> json) {
-    double p = (json['percent'] is num) ? (json['percent'] as num).toDouble() : 0.0;
-    if (p <= 1.0) p *= 100; // đề phòng server trả 0..1
-    return QuizDailyStatModel(
-      day: DateTime.parse(json['day'] as String),
-      correct: (json['correct'] ?? 0) as int,
-      total: (json['total'] ?? 0) as int,
-      percent: p,
+  factory QuizDailyStat.fromJson(Map<String, dynamic> json) {
+    return QuizDailyStat(
+      day: DateTime.parse(json['day']),
+      correctSum: json['correctSum'] ?? 0,
+      totalSum: json['totalSum'] ?? 0,
+      percentAccuracy: (json['percentAccuracy'] ?? 0).toDouble(),
     );
   }
 }
