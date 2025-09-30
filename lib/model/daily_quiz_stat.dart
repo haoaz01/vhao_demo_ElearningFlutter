@@ -1,37 +1,32 @@
+import 'package:intl/intl.dart';
+
 class QuizDailyStat {
   final DateTime day;
-  final int totalSum;
-  final int correctSum;
   final double percentAccuracy;
+  final int correctSum;
+  final int totalSum;
 
   QuizDailyStat({
     required this.day,
-    required this.totalSum,
-    required this.correctSum,
     required this.percentAccuracy,
+    required this.correctSum,
+    required this.totalSum,
   });
 
-  factory QuizDailyStat.fromJson(Map<String, dynamic> j) {
-    // back-end có thể trả "percentAccuracy" hoặc "dailyPercentage"
-    final num? pct =
-        (j['percentAccuracy'] as num?) ?? (j['dailyPercentage'] as num?);
-
-    // back-end có thể không có totalSum/correctSum ở endpoint /range
-    final int total = (j['totalSum'] as num?)?.toInt() ?? 0;
-    final int correct = (j['correctSum'] as num?)?.toInt() ?? 0;
-
-    // day là String "YYYY-MM-DD"
-    final String dayStr = j['day']?.toString() ?? '';
-    final DateTime d = DateTime.tryParse(dayStr) ??
-        // fallback nếu trả ISO date-time
-        DateTime.tryParse(dayStr.split('T').first) ??
-        DateTime.now();
-
+  // Backend có 2 kiểu field %: percentAccuracy | dailyPercentage
+  factory QuizDailyStat.fromJson(Map<String, dynamic> json) {
+    final pct = (json['percentAccuracy'] ?? json['dailyPercentage'] ?? 0) as num;
+    // day có thể là "2025-09-29" hoặc ISO string
+    final dayStr = json['day']?.toString();
+    final day = dayStr == null ? DateTime.now() : DateTime.parse(dayStr);
     return QuizDailyStat(
-      day: d,
-      totalSum: total,
-      correctSum: correct,
-      percentAccuracy: (pct ?? 0).toDouble(),
+      day: day,
+      percentAccuracy: pct.toDouble(),
+      correctSum: (json['correctSum'] ?? 0 as num).toInt(),
+      totalSum: (json['totalSum'] ?? 0 as num).toInt(),
     );
   }
+
+  /// Dùng để map theo ngày (yyyy-MM-dd)
+  String get dayKey => DateFormat('yyyy-MM-dd').format(day);
 }

@@ -24,7 +24,7 @@ void main() async {
   Get.put(AuthController());
   Get.put(MainController());
   Get.put(ProgressController());
-  Get.put(QuizHistoryController());
+  Get.put(QuizHistoryController(), permanent: true); // ❗ thêm dòng này
   Get.put(QuizController());
 
 

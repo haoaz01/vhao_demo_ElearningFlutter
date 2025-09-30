@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../model/daily_quiz_stat.dart';
 import '../model/quiz_attempt.dart';
@@ -6,11 +7,9 @@ import '../repositories/quiz_result_repository.dart';
 import '../repositories/quiz_history_repository.dart';
 
 class QuizHistoryController extends GetxController {
-  // === Cho Dashboard chart ===
   final quizDaily = <QuizDailyStat>[].obs;
   final isQuizLoading = false.obs;
 
-  // === Cho QuizHistoryScreen ===
   final isLoadingHistory = false.obs;
   final history = <QuizAttempt>[].obs;
 
@@ -19,58 +18,50 @@ class QuizHistoryController extends GetxController {
     return sp.getInt('userId') ?? 0;
   }
 
-  /// load dữ liệu cho biểu đồ quiz trong Dashboard
   Future<void> loadDailyStats({int days = 7}) async {
     isQuizLoading.value = true;
     try {
       final userId = await _uid();
-      if (userId == 0) {
-        quizDaily.clear();
-        return;
-      }
+      if (userId == 0) { quizDaily.clear(); return; }
 
       final fromDate = DateTime.now().subtract(Duration(days: days));
-      final iso = fromDate.toIso8601String();
+      final fromIso = DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(fromDate);
 
-      final raw = await quizResultRepo.getDailyAccuracy(userId, iso);
+      final raw = await quizResultRepo.getDailyAccuracy(userId, fromIso);
+      final parsed = raw.map((e) => QuizDailyStat.fromJson(e as Map<String,dynamic>)).toList();
 
-      final parsed = <QuizDailyStat>[];
-      for (final e in raw) {
-        try {
-          parsed.add(QuizDailyStat.fromJson(e as Map<String, dynamic>));
-        } catch (_) {}
+      // Map theo key ngày có sẵn từ API
+      final byDay = { for (final e in parsed) e.dayKey : e };
+
+      // Fill đủ N ngày gần nhất (kể cả ngày không có dữ liệu -> % = 0)
+      final filled = <QuizDailyStat>[];
+      for (int i = 0; i < days; i++) {
+        final d = DateTime.now().subtract(Duration(days: days - 1 - i));
+        final key = DateFormat('yyyy-MM-dd').format(d);
+        filled.add(
+          byDay[key] ??
+              QuizDailyStat(day: d, percentAccuracy: 0, correctSum: 0, totalSum: 0),
+        );
       }
-
-      quizDaily.assignAll(parsed);
+      quizDaily.assignAll(filled);
     } catch (e) {
-      print('loadDailyStats error: $e');
+      // print('loadDailyStats error: $e');
       quizDaily.clear();
     } finally {
       isQuizLoading.value = false;
     }
   }
 
-  /// load lịch sử 1 quiz cụ thể cho QuizHistoryScreen
   Future<void> fetchQuizHistory(int quizId) async {
+    isLoadingHistory.value = true;
     try {
-      isLoadingHistory.value = true;
       final uid = await _uid();
-      if (uid == 0) {
-        history.clear();
-        return;
-      }
-
-      final j = await QuizHistoryRepository.getBestScore(quizId, uid);
-      if (j == null) {
-        history.clear();
-        return;
-      }
-
-      history.assignAll([QuizAttempt.fromBestScoreJson(j)]);
-    } catch (e) {
-      history.clear();
+      final raw = await QuizHistoryRepository.getHistory(quizId, uid);
+      print('RAW HISTORY: $raw');
+      history.assignAll(raw.map((e) => QuizAttempt.fromJson(e as Map<String,dynamic>)).toList());
     } finally {
       isLoadingHistory.value = false;
     }
   }
 }
+

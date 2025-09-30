@@ -224,31 +224,31 @@ class QuizController extends GetxController {
     return quizResults["$chapterName-$setTitle"]?["completed"] ?? false;
   }
 
-  Future<void> fetchQuizHistory(int quizId) async {
-    try {
-      isHistoryLoading.value = true;
-
-      final authController = Get.find<AuthController>();
-      final userId = authController.userId.value;
-
-      if (userId == 0) {
-        throw Exception("User not logged in");
-      }
-
-      final history = await quizRepository.getQuizHistory(quizId, userId);
-      quizHistory.assignAll(history);
-    } catch (e) {
-      Get.snackbar(
-        "Lỗi",
-        "Không thể tải lịch sử làm bài: ${e.toString()}",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-    } finally {
-      isHistoryLoading.value = false;
-    }
-  }
+  // Future<void> fetchQuizHistory(int quizId) async {
+  //   try {
+  //     isHistoryLoading.value = true;
+  //
+  //     final authController = Get.find<AuthController>();
+  //     final userId = authController.userId.value;
+  //
+  //     if (userId == 0) {
+  //       throw Exception("User not logged in");
+  //     }
+  //
+  //     final history = await quizRepository.getQuizHistory(quizId, userId);
+  //     quizHistory.assignAll(history);
+  //   } catch (e) {
+  //     Get.snackbar(
+  //       "Lỗi",
+  //       "Không thể tải lịch sử làm bài: ${e.toString()}",
+  //       snackPosition: SnackPosition.BOTTOM,
+  //       backgroundColor: Colors.red,
+  //       colorText: Colors.white,
+  //     );
+  //   } finally {
+  //     isHistoryLoading.value = false;
+  //   }
+  // }
 
   /// 🔹 Tìm subjectId dựa vào grade + subjectName
   Future<int?> _getSubjectIdByGradeAndName(int gradeId, String subjectName) async {

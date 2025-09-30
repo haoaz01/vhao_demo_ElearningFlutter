@@ -26,7 +26,7 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
   @override
   void initState() {
     super.initState();
-    quizController.fetchQuizHistory(widget.quizId);
+    quizController.fetchQuizHistory(widget.quizId); // ✅ chỉ gọi controller này
     questionController.fetchQuizQuestions(widget.quizId);
     _tabController = TabController(length: 2, vsync: this);
   }
