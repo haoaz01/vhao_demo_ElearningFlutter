@@ -11,7 +11,6 @@ import 'app/routes/app_routes.dart';
 import 'controllers/progress_controller.dart';
 import 'controllers/quiz_controller.dart';
 import 'controllers/quiz_history_controller.dart';
-import 'controllers/streak_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

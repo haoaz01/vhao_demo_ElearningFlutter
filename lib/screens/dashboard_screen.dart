@@ -1,11 +1,14 @@
+import 'package:get/get.dart' hide Progress;
 import 'package:flutter/material.dart';
 import 'package:flutter_elearning_application/model/progress_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart' hide Progress;
 import '../controllers/progress_controller.dart';
-import '../controllers/streak_controller.dart';
 import '../controllers/quiz_history_controller.dart';
 import '../controllers/auth_controller.dart';
+import '../controllers/user_activity_controller.dart';
+import '../model/calendar_day.dart';
+import '../repositories/user_activity_repository.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:async';
@@ -29,8 +32,8 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   final ProgressController progressController = Get.find<ProgressController>();
   final AuthController authController = Get.find<AuthController>();
-  final StreakController streakController = Get.find<StreakController>();
   final QuizHistoryController quizHistoryController = Get.find<QuizHistoryController>();
+  late final UserActivityController userActivityController;
 
   final Map<String, String> subjectIcons = const {
     'Toán': 'assets/icon/toan.png',
@@ -57,34 +60,42 @@ class _DashboardScreenState extends State<DashboardScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    // Khởi tạo UserActivityController
+    userActivityController = Get.isRegistered<UserActivityController>()
+        ? Get.find<UserActivityController>()
+        : Get.put(UserActivityController(
+      repository: UserActivityRepository(client: Get.find()),
+    ));
+
     _loadProgressData();
-    // Streak đã tách controller riêng
-    streakController.fetchStreak(); // Sửa: gọi fetchStreak() thay vì streakLoaded()
     _scheduleMidnightRefresh();
-    _startOnlineSession(); // 👈 bắt đầu đếm khi mở app
+    _startOnlineSession();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _midnightTimer?.cancel();
-    _stopOnlineSession(); // 👈 dừng timer khi dispose
+    _stopOnlineSession();
     super.dispose();
   }
 
-  // Bắt đầu session online
   void _startOnlineSession() {
     _sessionStart ??= DateTime.now();
     _onlineTimer?.cancel();
-    // Tick mỗi 10s cho nhẹ
     _onlineTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
       if (_markedOnlineToday || _sessionStart == null) return;
       final elapsed = DateTime.now().difference(_sessionStart!);
       if (elapsed.inMinutes >= 15) {
         try {
-          await streakController.checkInToday();    // Sửa: dùng checkInToday() thay vì checkTodayStatus()
-          await streakController.fetchStreak(); // Sửa: refresh UI bằng fetchStreak()
-          _markedOnlineToday = true;             // chỉ 1 lần trong ngày
+          // Ghi nhận 15 phút học tự động
+          await userActivityController.recordActivity(
+              authController.userId.value,
+              DateTime.now(),
+              15
+          );
+          _markedOnlineToday = true;
         } catch (_) {
           // im lặng, tránh crash
         } finally {
@@ -94,7 +105,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     });
   }
 
-  // Dừng session online
   void _stopOnlineSession() {
     _onlineTimer?.cancel();
     _onlineTimer = null;
@@ -103,10 +113,10 @@ class _DashboardScreenState extends State<DashboardScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _startOnlineSession();   // 👈 resume → tiếp tục đếm
+      _startOnlineSession();
       _loadProgressData();
     } else if (state == AppLifecycleState.paused) {
-      _stopOnlineSession();    // 👈 pause → dừng đếm
+      _stopOnlineSession();
     }
   }
 
@@ -116,15 +126,15 @@ class _DashboardScreenState extends State<DashboardScreen>
     final tomorrow = DateTime(now.year, now.month, now.day + 1);
     final diff = tomorrow.difference(now);
     _midnightTimer = Timer(diff + const Duration(seconds: 1), () {
-      _markedOnlineToday = false;     // ❗ reset để ngày mới đếm lại
-      _sessionStart = DateTime.now(); // bắt đầu lại mốc đếm
+      _markedOnlineToday = false;
+      _sessionStart = DateTime.now();
       _loadProgressData();
       _scheduleMidnightRefresh();
     });
   }
 
   Future<void> _loadProgressData() async {
-    await streakController.fetchStreak();
+    await userActivityController.fetchUserStreakAndCalendar(authController.userId.value);
     await quizHistoryController.loadDailyStats(days: 7);
   }
 
@@ -492,7 +502,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               SizedBox(height: 24.h),
               GestureDetector(
                 onTap: _navigateToStreakScreen,
-                child: const _StreakCardFromApi(),
+                child: const _StreakCardNew(),
               ),
               SizedBox(height: 16.h),
               const _QuizHistoryFromApi(),
@@ -606,220 +616,326 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 }
 
-class _StreakCardFromApi extends StatelessWidget {
-  const _StreakCardFromApi();
+// CARD STREAK MỚI - SỬ DỤNG USER ACTIVITY CONTROLLER
+// Trong DashboardScreen, thay thế các Obx không cần thiết bằng GetBuilder
+
+class _StreakCardNew extends StatelessWidget {
+  const _StreakCardNew();
+
+  CalendarDayDTO? _getTodayData(UserActivityController controller) {
+    if (controller.streakData == null) return null;
+
+    final today = DateTime.now();
+    try {
+      return controller.streakData!.calendarDays.firstWhere(
+            (day) =>
+        day.date.year == today.year &&
+            day.date.month == today.month &&
+            day.date.day == today.day,
+      );
+    } catch (e) {
+      return CalendarDayDTO(
+        date: today,
+        studied: false,
+        minutesStudied: 0,
+        isInCurrentStreak: false,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final sc = Get.find<StreakController>();
+    final authController = Get.find<AuthController>();
+
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Obx(() {
-          if (!sc.streakLoaded.value) {
-            return const SizedBox(
-              height: 80,
-              child: Center(child: CircularProgressIndicator()),
-            );
-          }
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: GetBuilder<UserActivityController>(
+                builder: (controller) {
+                  {
+                    if (controller.isLoading && controller.streakData == null) {
+                      return const SizedBox(
+                        height: 80,
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
 
-          final cur = sc.currentStreak.value;
-          final best = sc.bestStreak.value;
-          final total = sc.totalDays.value;
-          final todayMinutes = sc.todayMinutes.value;
-          final todayStudied = sc.todayStudied.value;
-          final last = sc.lastActive.value;
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header với icon lửa và tiêu đề
-              Row(
-                children: [
-                  Icon(
-                    Icons.local_fire_department,
-                    color: todayStudied ? Colors.orange : Colors.grey,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Chuỗi ngày học liên tiếp',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: todayStudied ? Colors.black87 : Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Tiến trình hôm nay
-              if (todayMinutes > 0) ...[
-                Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Hôm nay',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Text(
-                                    '$todayMinutes',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.blue,
-                                    ),
-                                  ),
-                                  Text(
-                                    '/15 phút',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                    if (controller.error != null) {
+                      return Column(
+                        children: [
+                          Icon(
+                              Icons.error_outline, size: 32, color: Colors.red),
+                          SizedBox(height: 8),
+                          Text(
+                            'Lỗi tải dữ liệu streak',
+                            style: TextStyle(color: Colors.grey[600]),
                           ),
+                          SizedBox(height: 8),
+                          ElevatedButton(
+                            onPressed: () =>
+                                controller.fetchUserStreakAndCalendar(
+                                    authController.userId.value),
+                            child: Text('Thử lại'),
+                          ),
+                        ],
+                      );
+                    }
+
+                    final streakData = controller.streakData;
+                    final todayData = _getTodayData(controller);
+                    final currentStreak = streakData?.currentStreak ?? 0;
+                    final todayStudied = todayData?.studied ?? false;
+                    final todayMinutes = todayData?.minutesStudied ?? 0;
+                    final progress = (todayMinutes / 15.0).clamp(0.0, 1.0);
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header với icon lửa và tiêu đề
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.local_fire_department,
+                              color: currentStreak > 0 ? Colors.orange : Colors
+                                  .grey,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Chuỗi ngày học liên tiếp',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: currentStreak > 0
+                                    ? Colors.black87
+                                    : Colors.grey[600],
+                              ),
+                            ),
+                          ],
                         ),
-                        Chip(
-                          label: Text(
-                            todayStudied ? 'Đã hoàn thành' : 'Đang học',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+                        const SizedBox(height: 12),
+
+                        // Tiến trình hôm nay
+                        Column(
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment
+                                        .start,
+                                    children: [
+                                      Text(
+                                        'Hôm nay',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            '$todayMinutes',
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.blue,
+                                            ),
+                                          ),
+                                          Text(
+                                            '/15 phút',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Chip(
+                                  label: Text(
+                                    todayStudied
+                                        ? 'Đã hoàn thành'
+                                        : todayMinutes > 0
+                                        ? 'Đang học'
+                                        : 'Chưa học',
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  backgroundColor: todayStudied
+                                      ? Colors.green
+                                      : todayMinutes > 0
+                                      ? Colors.orange
+                                      : Colors.grey,
+                                  side: BorderSide.none,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            LinearProgressIndicator(
+                              value: progress,
+                              backgroundColor: Colors.grey[200],
+                              color: todayStudied ? Colors.green : Colors
+                                  .orange,
+                              minHeight: 6,
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                        ),
+
+                        // 3 số liệu chính
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _StreakStatChipNew(
+                              value: '$currentStreak',
+                              label: 'Ngày liên tiếp',
+                              color: currentStreak > 0 ? Colors.orange : Colors
+                                  .grey,
+                            ),
+                            _StreakStatChipNew(
+                              value: '${streakData?.calendarDays
+                                  .where((day) => day.studied)
+                                  .length ?? 0}',
+                              label: 'Tổng ngày học',
+                              color: Colors.blue,
+                            ),
+                            _StreakStatChipNew(
+                              value: '$currentStreak',
+                              // Tạm thời dùng current streak làm best streak
+                              label: 'Kỷ lục',
+                              color: Colors.purple,
+                            ),
+                          ],
+                        ),
+
+                        // Thông tin bổ sung
+                        if (streakData?.streakEndDate != null) ...[
+                          const SizedBox(height: 8),
+                          Center(
+                            child: Text(
+                              'Hoạt động gần nhất: ${DateFormat('dd/MM/yyyy')
+                                  .format(streakData!.streakEndDate!)}',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey[500],
+                                fontStyle: FontStyle.italic,
+                              ),
                             ),
                           ),
-                          backgroundColor: todayStudied ? Colors.green : Colors.orange,
-                          side: BorderSide.none,
+                        ],
+
+                        // Nút hành động
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  if (controller.isSessionActive) {
+                                    controller.endStudySession(
+                                        authController.userId.value);
+                                    Get.snackbar(
+                                      'Kết thúc học',
+                                      'Đã lưu thời gian học tập!',
+                                      backgroundColor: Colors.blue,
+                                      colorText: Colors.white,
+                                    );
+                                  } else {
+                                    controller.startStudySession();
+                                    Get.snackbar(
+                                      'Bắt đầu học',
+                                      'Phiên học đã được bắt đầu. Hãy tập trung!',
+                                      backgroundColor: Colors.green,
+                                      colorText: Colors.white,
+                                    );
+                                  }
+                                },
+                                icon: Icon(
+                                  controller.isSessionActive
+                                      ? Icons.stop
+                                      : Icons.play_arrow,
+                                  size: 16,
+                                ),
+                                label: Text(controller.isSessionActive
+                                    ? 'Kết thúc học'
+                                    : 'Bắt đầu học'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: controller.isSessionActive
+                                      ? Colors.red
+                                      : Colors.green,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 8),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: const Icon(Icons.arrow_forward),
+                              onPressed: () {
+                                Get.to(() => const StreakScreen());
+                              },
+                              tooltip: 'Xem chi tiết streak',
+                            ),
+                          ],
                         ),
+
+                        // Hiển thị thời gian phiên học hiện tại
+                        if (controller.isSessionActive) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.green[50],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.timer, size: 16,
+                                    color: Colors.green[700]),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Đang học: ${controller
+                                      .currentSessionMinutes} phút',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.green[700],
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
-                    ),
-                    const SizedBox(height: 8),
-                    LinearProgressIndicator(
-                      value: (todayMinutes / 15).clamp(0.0, 1.0),
-                      backgroundColor: Colors.grey[200],
-                      color: todayStudied ? Colors.green : Colors.orange,
-                      minHeight: 6,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                ),
-              ] else ...[
-                // Nếu chưa học hôm nay
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.lightbulb_outline,
-                        size: 16,
-                        color: Colors.grey[500],
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Học 15 phút để bắt đầu chuỗi',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-
-              // 3 số liệu chính
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _StreakStatChip(
-                    value: '$cur',
-                    label: 'Ngày liên tiếp',
-                    color: cur > 0 ? Colors.orange : Colors.grey,
-                  ),
-                  _StreakStatChip(
-                    value: '$total',
-                    label: 'Tổng ngày học',
-                    color: Colors.blue,
-                  ),
-                  _StreakStatChip(
-                    value: '$best',
-                    label: 'Kỷ lục',
-                    color: Colors.purple,
-                  ),
-                ],
-              ),
-
-              // Thông tin bổ sung
-              if (last != null) ...[
-                const SizedBox(height: 8),
-                Center(
-                  child: Text(
-                    'Hoạt động gần nhất: ${DateFormat('dd/MM/yyyy').format(last)}',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.grey[500],
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ),
-              ],
-
-              // Nút hành động
-              if (!todayStudied) ...[
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      sc.touch();
-                    },
-                    icon: const Icon(Icons.add, size: 16),
-                    label: const Text('Thêm phút học'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          );
-        }),
+                    );
+                  }
+                },
       ),
-    );
+    ));
   }
 }
 
-// Sửa: Đổi tên class để tránh trùng lặp
-class _StreakStatChip extends StatelessWidget {
+// CHIP THỐNG KÊ STREAK MỚI
+class _StreakStatChipNew extends StatelessWidget {
   final String value;
   final String label;
   final Color color;
 
-  const _StreakStatChip({
+  const _StreakStatChipNew({
     required this.value,
     required this.label,
     this.color = Colors.blue,
@@ -862,6 +978,7 @@ class _StreakStatChip extends StatelessWidget {
   }
 }
 
+// GIỮ NGUYÊN PHẦN QUIZ HISTORY
 class _QuizHistoryFromApi extends StatelessWidget {
   const _QuizHistoryFromApi({super.key});
 
