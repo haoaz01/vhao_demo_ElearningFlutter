@@ -159,11 +159,11 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
                           vertical: 6.h,
                         ),
                         decoration: BoxDecoration(
-                          color: _getScoreColor(attempt.score10),
+                          color: _getScoreColor(attempt.score),
                           borderRadius: BorderRadius.circular(20.r),
                         ),
                         child: Text(
-                          "${attempt.score10.toStringAsFixed(1)}/10",
+                          "${attempt.score.toStringAsFixed(1)}/10",
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,

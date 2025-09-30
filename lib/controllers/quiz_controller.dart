@@ -25,7 +25,7 @@ class QuizController extends GetxController {
   var lastResult = Rxn<QuizResult>();
   var chapters = <Map<String, dynamic>>[].obs;
   var quizResults = <String, Map<String, dynamic>>{}.obs;
-  var quizHistory = <QuizHistory>[].obs;
+  // var quizHistory = <QuizHistory>[].obs;
   var isHistoryLoading = false.obs;
   var bestScore = <String, Map<String, dynamic>>{}.obs;
   var isBestScoreLoading = false.obs;

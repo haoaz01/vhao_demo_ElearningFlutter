@@ -3,15 +3,17 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../model/daily_quiz_stat.dart';
 import '../model/quiz_attempt.dart';
+import '../model/quiz_history_model.dart';
 import '../repositories/quiz_result_repository.dart';
 import '../repositories/quiz_history_repository.dart';
 
 class QuizHistoryController extends GetxController {
   final quizDaily = <QuizDailyStat>[].obs;
   final isQuizLoading = false.obs;
+  var history = <QuizHistory>[].obs;
 
   final isLoadingHistory = false.obs;
-  final history = <QuizAttempt>[].obs;
+  // final history = <QuizAttempt>[].obs;
 
   Future<int> _uid() async {
     final sp = await SharedPreferences.getInstance();
@@ -57,8 +59,7 @@ class QuizHistoryController extends GetxController {
     try {
       final uid = await _uid();
       final raw = await QuizHistoryRepository.getHistory(quizId, uid);
-      print('RAW HISTORY: $raw');
-      history.assignAll(raw.map((e) => QuizAttempt.fromJson(e as Map<String,dynamic>)).toList());
+      history.assignAll(raw.map((e) => QuizHistory.fromJson(e)).toList());
     } finally {
       isLoadingHistory.value = false;
     }

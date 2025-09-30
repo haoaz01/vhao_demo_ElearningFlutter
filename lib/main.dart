@@ -21,11 +21,13 @@ void main() async {
   final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
 
   Get.put(MainController());
-  Get.put(AuthController());
+  // Get.put(AuthController());
   Get.put(MainController());
   Get.put(ProgressController());
   Get.put(QuizHistoryController(), permanent: true); // ❗ thêm dòng này
-  Get.put(QuizController());
+  // Get.put(QuizController());
+  Get.put<AuthController>(AuthController(), permanent: true);
+  Get.put<QuizController>(QuizController(), permanent: true); // 🔑 cần dòng này
 
 
   String initialRoute;
