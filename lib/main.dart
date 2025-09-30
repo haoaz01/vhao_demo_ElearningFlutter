@@ -9,6 +9,9 @@ import 'controllers/main_controller.dart';
 import 'app/routes/app_page.dart';
 import 'app/routes/app_routes.dart';
 import 'controllers/progress_controller.dart';
+import 'controllers/quiz_controller.dart';
+import 'controllers/quiz_history_controller.dart';
+import 'controllers/streak_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,9 +20,11 @@ void main() async {
   final bool isFirstOpen = prefs.getBool('isFirstOpen') ?? true;
   final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
 
-  Get.put(AuthController());
-  Get.put(MainController());
-  Get.put(ProgressController());
+
+  // Get.put(AuthController());
+  // Get.put(MainController());
+  // Get.put(ProgressController());
+
 
   String initialRoute;
   if (isFirstOpen) {

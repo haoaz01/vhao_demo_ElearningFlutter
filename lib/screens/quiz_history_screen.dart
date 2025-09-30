@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import '../controllers/quiz_history_controller.dart';
 import '../controllers/quiz_controller.dart';
 import '../model/question_content_model.dart';
 import '../widgets/inline_latex_text.dart';
@@ -18,14 +19,15 @@ class QuizHistoryScreen extends StatefulWidget {
 
 class _QuizHistoryScreenState extends State<QuizHistoryScreen>
     with SingleTickerProviderStateMixin {
-  final QuizController quizController = Get.find<QuizController>();
+  final QuizHistoryController quizController = Get.find<QuizHistoryController>();
+  final QuizController questionController = Get.find<QuizController>();
   late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
     quizController.fetchQuizHistory(widget.quizId);
-    quizController.fetchQuizQuestions(widget.quizId);
+    questionController.fetchQuizQuestions(widget.quizId);
     _tabController = TabController(length: 2, vsync: this);
   }
 
@@ -104,7 +106,7 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
 
   Widget _buildHistoryTab() {
     return Obx(() {
-      if (quizController.isHistoryLoading.value) {
+      if (quizController.isLoadingHistory.value) {
         return Center(
           child: CircularProgressIndicator(
             valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
@@ -112,17 +114,14 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
         );
       }
 
-      if (quizController.quizHistory.isEmpty) {
+      if (quizController.history.isEmpty) { // 👈
         return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.history, size: 64.w, color: Colors.green.shade300),
               SizedBox(height: 16.h),
-              Text(
-                "Chưa có lịch sử làm bài",
-                style: TextStyle(fontSize: 18.sp),
-              ),
+              Text("Chưa có lịch sử làm bài", style: TextStyle(fontSize: 18.sp)),
             ],
           ),
         );
@@ -130,9 +129,9 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
 
       return ListView.builder(
         padding: EdgeInsets.all(16.r),
-        itemCount: quizController.quizHistory.length,
+        itemCount: quizController.history.length,
         itemBuilder: (context, index) {
-          final attempt = quizController.quizHistory[index];
+          final attempt = quizController.history[index];
           return Card(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12.r),
@@ -160,11 +159,11 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
                           vertical: 6.h,
                         ),
                         decoration: BoxDecoration(
-                          color: _getScoreColor(attempt.score),
+                          color: _getScoreColor(attempt.score10),
                           borderRadius: BorderRadius.circular(20.r),
                         ),
                         child: Text(
-                          "${attempt.score.toStringAsFixed(1)}/10",
+                          "${attempt.score10.toStringAsFixed(1)}/10",
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -209,17 +208,14 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
 
   Widget _buildExplanationTab() {
     return Obx(() {
-      if (quizController.questions.isEmpty) {
+      if (questionController.questions.isEmpty) { // 👈
         return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.menu_book, size: 64.w, color: Colors.green.shade300),
               SizedBox(height: 16.h),
-              Text(
-                "Chưa có dữ liệu giải thích",
-                style: TextStyle(fontSize: 18.sp),
-              ),
+              Text("Chưa có dữ liệu giải thích", style: TextStyle(fontSize: 18.sp)),
             ],
           ),
         );
@@ -227,11 +223,10 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
 
       return ListView.builder(
         padding: EdgeInsets.all(16.r),
-        itemCount: quizController.questions.length,
+        itemCount: questionController.questions.length, // 👈
         itemBuilder: (context, index) {
-          final question = quizController.questions[index];
+          final question = questionController.questions[index]; // 👈
           final correctChoice = question.choices.firstWhere((c) => c.isCorrect);
-
           return Card(
             margin: EdgeInsets.only(bottom: 20.h),
             shape: RoundedRectangleBorder(

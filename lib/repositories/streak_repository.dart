@@ -1,54 +1,65 @@
 // lib/repositories/streak_repository.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'progress_repository.dart';
+
+class UserStreak {
+  final int current;
+  final int best;
+  final int total;
+  final DateTime? lastCheckIn;
+  UserStreak({required this.current, required this.best, required this.total, this.lastCheckIn});
+
+  factory UserStreak.fromJson(Map<String, dynamic> j) => UserStreak(
+    current: (j['currentStreak'] ?? 0) as int,
+    best:    (j['bestStreak']    ?? 0) as int,
+    total:   (j['totalDays']     ?? 0) as int,
+    lastCheckIn: j['lastActiveDate'] != null
+        ? DateTime.tryParse(j['lastActiveDate'].toString())
+        : null,
+  );
+}
 
 class StreakRepository {
-  // Đổi IP theo server của bạn
-  static const String _apiBase = 'http://192.168.1.219:8080/api';
+  static String get _base => ProgressRepository.streakBase;
 
-  Future<Map<String, dynamic>> getStreak(int userId) async {
-    return _get('/streak/$userId');
-  }
-
-  Future<Map<String, dynamic>> online(int userId) async {
-    return _post('/streak/$userId/online');
-  }
-  /// Gọi backend để cập nhật streak (online/lesson/quiz)
-  // Future<Map<String, dynamic>> touchStreak(int userId) async {
-  //   return _post('/streak/$userId/online');
-  // }
-
-  Future<Map<String, dynamic>> _get(String path) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('authToken') ?? '';
-    final uri = Uri.parse('$_apiBase$path');
-
-    final res = await http.get(uri, headers: {
-      'Content-Type': 'application/json',
-      if (token.isNotEmpty) 'Authorization': 'Bearer $token',
-    });
-
-    final body = res.body.isEmpty ? null : jsonDecode(res.body);
-    return {'statusCode': res.statusCode, 'data': body};
-  }
-
-  Future<Map<String, dynamic>> _post(String path,
-      {Map<String, dynamic>? body}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('authToken') ?? '';
-    final uri = Uri.parse('$_apiBase$path');
-
-    final res = await http.post(
-      uri,
-      headers: {
-        'Content-Type': 'application/json',
-        if (token.isNotEmpty) 'Authorization': 'Bearer $token',
-      },
-      body: body == null ? null : jsonEncode(body),
+  static Future<UserStreak> getStreak(int userId) async {
+    final token = await ProgressRepository.getToken();
+    final res = await http.get(
+      Uri.parse('$_base/$userId'),
+      headers: ProgressRepository.authHeaders(token),
     );
+    if (res.statusCode == 200) {
+      return UserStreak.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+    }
+    if (res.statusCode == 404) {
+      return UserStreak(current: 0, best: 0, total: 0, lastCheckIn: null);
+    }
+    throw Exception('getStreak failed ${res.statusCode}: ${res.body}');
+  }
 
-    final data = res.body.isNotEmpty ? jsonDecode(res.body) : null;
-    return {'statusCode': res.statusCode, 'data': data};
+  static Future<UserStreak> touch(int userId) async {
+    final token = await ProgressRepository.getToken();
+    final res = await http.post(
+      Uri.parse('$_base/$userId/touch'),
+      headers: ProgressRepository.authHeaders(token),
+    );
+    if (res.statusCode == 200) {
+      return UserStreak.fromJson(jsonDecode(res.body));
+    }
+    throw Exception('touch failed ${res.statusCode}: ${res.body}');
+  }
+
+  static Future<UserStreak> checkInToday(int userId) async {
+    final token = await ProgressRepository.getToken();
+    final res = await http.post(
+      Uri.parse('$_base/$userId/online'),
+      headers: ProgressRepository.authHeaders(token),
+    );
+    if (res.statusCode == 200) {
+      return UserStreak.fromJson(jsonDecode(res.body));
+    }
+    throw Exception('online failed ${res.statusCode}: ${res.body}');
   }
 }
+

@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:flutter_elearning_application/model/daily_quiz_stat.dart';
+import 'package:flutter_elearning_application/repositories/progress_repository.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../model/quiz_history_model.dart';
@@ -7,11 +9,11 @@ import '../model/question_model.dart';
 import '../model/choice_model.dart';
 import '../model/quiz_result_model.dart';
 import '../model/quiz_progress_model.dart';
-import '../model/quiz_daily_stat_model.dart';
 
 
 class QuizRepository {
-  final String baseUrl = "http://192.168.1.219:8080/api/quizzes";
+  final String baseUrl = "${ProgressRepository.host}/api/quizzes";
+  // final String baseUrl = "http://192.168.1.118:8080/api/quizzes";
 
   Future<List<Quiz>> getAllQuizzes() async {
     final response = await http.get(Uri.parse(baseUrl));
@@ -280,7 +282,7 @@ class QuizRepository {
     }
   }
 
-  Future<List<QuizDailyStat>> getQuizDailyAccuracy({
+  Future<List<DailyQuizStat>> getQuizDailyAccuracy({
     required int userId,
     int days = 7,
     int? gradeId,
@@ -307,7 +309,7 @@ class QuizRepository {
 
     if (res.statusCode == 200) {
       final List<dynamic> arr = jsonDecode(res.body);
-      return arr.map((e) => QuizDailyStat.fromJson(e as Map<String, dynamic>)).toList();
+      return arr.map((e) => DailyQuizStat.fromJson(e as Map<String, dynamic>)).toList();
     } else {
       throw Exception("Failed to load quiz history: ${res.statusCode} ${res.body}");
     }

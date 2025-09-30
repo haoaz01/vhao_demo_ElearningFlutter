@@ -1,6 +1,8 @@
 import 'package:flutter_elearning_application/controllers/progress_controller.dart';
+import 'package:flutter_elearning_application/controllers/quiz_history_controller.dart';
 import 'package:get/get.dart';
 import '../model/quiz_history_model.dart';
+import '../controllers/quiz_history_controller.dart';
 import '../model/quiz_model.dart';
 import '../model/question_model.dart';
 import '../model/choice_model.dart';
@@ -11,6 +13,7 @@ import 'package:flutter/material.dart';
 
 class QuizController extends GetxController {
   final QuizRepository quizRepository = QuizRepository();
+
 
   var isLoading = false.obs;
   var quizzes = <Quiz>[].obs;
@@ -33,6 +36,7 @@ class QuizController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    // Get.put(QuizController());
     fetchAllQuizzes();
   }
 
@@ -115,7 +119,7 @@ class QuizController extends GetxController {
       }
 
       final result = await quizRepository.submitQuiz(quizId, userAnswers, durationSeconds);
-      Get.find<ProgressController>().loadQuizStats(days: 7);
+      Get.find<QuizHistoryController>().loadDailyStats(days: 7);
       lastResult.value = result;
 
       print("✅ Quiz submitted successfully: ${result.score}");

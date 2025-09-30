@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
 import '../controllers/auth_controller.dart';
-import '../controllers/progress_controller.dart';
+import '../controllers/streak_controller.dart';
 
 class StreakScreen extends StatefulWidget {
   final DateTime? overrideNow;
@@ -14,49 +14,50 @@ class StreakScreen extends StatefulWidget {
 }
 
 class _StreakScreenState extends State<StreakScreen> {
-  late final ProgressController progressController;
-  late final AuthController auth;
+  late final StreakController streakController;
+  late final AuthController s; // nếu không dùng có thể xoá 2 dòng (khai báo + init)
 
   late DateTime now;
   Set<DateTime> studyDays = {};
 
   late int currentMonth;
   late int currentYear;
-  late final Worker _statsWorker;
+  // late final Worker _statsWorker;
 
   DateTime _dayKey(DateTime d) => DateTime(d.year, d.month, d.day);
 
   @override
   void initState() {
     super.initState();
-    progressController = Get.isRegistered<ProgressController>()
-        ? Get.find<ProgressController>()
-        : Get.put(ProgressController());
-    auth = Get.find<AuthController>();
+    streakController = Get.isRegistered<StreakController>()
+        ? Get.find<StreakController>()
+        : Get.put(StreakController());
+    s = Get.find<AuthController>(); // nếu không cần có thể xoá
 
     now = widget.overrideNow ?? DateTime.now();
     currentMonth = now.month;
     currentYear = now.year;
-
+    streakController.loadStreak();  // alias fetchStreak()
     _init();
-    _statsWorker = ever(progressController.statsVersion, (_) => _loadLocalDays());
+
+    // lắng nghe khi số liệu streak đổi để reload các ngày đã học
+    // _statsWorker = ever(streakController.statsVersion, (_) => _loadLocalDays());
   }
 
   Future<void> _init() async {
-    await progressController.loadStreak();
+    await streakController.loadStreak(); // alias -> fetchStreak()
     await _loadLocalDays();
   }
 
-
   @override
   void dispose() {
-    _statsWorker.dispose();
+    // _statsWorker.dispose();
     super.dispose();
   }
 
   Future<void> _loadLocalDays() async {
-    final days = await progressController.readStudyDays();
-    setState(() => studyDays = days.map(_dayKey).toSet());
+    // final days = await streakController.readStudyDays(); // TODO: nối API nếu có
+    // setState(() => studyDays = days.map(_dayKey).toSet());
   }
 
   void _changeMonth(int offset) {
@@ -103,8 +104,8 @@ class _StreakScreenState extends State<StreakScreen> {
 
   List<DateTime> _currentChain() {
     return _buildStreakChain(
-      currentStreak: progressController.currentStreak.value,
-      lastActiveDate: progressController.lastActive.value,
+      currentStreak: streakController.currentStreak.value,
+      lastActiveDate: streakController.lastActive.value,
       now: widget.overrideNow,
     );
   }
@@ -131,8 +132,8 @@ class _StreakScreenState extends State<StreakScreen> {
             icon: const Icon(Icons.local_fire_department, color: Colors.white),
             tooltip: 'Chạm tính streak hôm nay',
             onPressed: () async {
-              // await progressController.touchStreakToday();
-              await progressController.loadStreak();
+              await streakController.touch(); // alias -> checkInToday()
+              await streakController.loadStreak();
               await _loadLocalDays();
             },
           )
@@ -185,11 +186,11 @@ class _StreakScreenState extends State<StreakScreen> {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Obx(() {
-                final loaded = progressController.streakLoaded.value;
-                final cur = progressController.currentStreak.value;
-                final best = progressController.bestStreak.value;
-                final total = progressController.totalDays.value;
-                final last = progressController.lastActive.value;
+                final loaded = streakController.streakLoaded.value;
+                final cur = streakController.currentStreak.value;
+                final best = streakController.bestStreak.value;
+                final total = streakController.totalDays.value;
+                final last = streakController.lastActive.value;
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

@@ -3,6 +3,8 @@ import 'package:flutter_elearning_application/model/progress_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart' hide Progress;
 import '../controllers/progress_controller.dart';
+import '../controllers/streak_controller.dart';
+import '../controllers/quiz_history_controller.dart';
 import '../controllers/auth_controller.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -31,6 +33,8 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   final ProgressController progressController = Get.find<ProgressController>();
   final AuthController authController = Get.find<AuthController>();
+  final StreakController streakController = Get.find<StreakController>();
+  final QuizHistoryController quizHistoryController = Get.find<QuizHistoryController>();
 
   final Map<String, String> subjectIcons = const {
     'Toán': 'assets/icon/toan.png',
@@ -58,8 +62,8 @@ class _DashboardScreenState extends State<DashboardScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadProgressData();
-    final pc = Get.find<ProgressController>();
-    pc.loadStreak();
+    // Streak đã tách controller riêng
+    streakController.loadStreak(); // hoặc streakController.fetchStreak();
     _scheduleMidnightRefresh();
     _startOnlineSession(); // 👈 bắt đầu đếm khi mở app
 
@@ -84,8 +88,8 @@ class _DashboardScreenState extends State<DashboardScreen>
       final elapsed = DateTime.now().difference(_sessionStart!);
       if (elapsed.inMinutes >= 15) {
         try {
-          await progressController.markOnline(); // gọi backend /streak/{userId}/online
-          await progressController.loadStreak(); // refresh UI
+          await streakController.checkInToday();    // hoặc streakController.checkInToday();
+          await streakController.loadStreak(); // refresh UI
           _markedOnlineToday = true;             // chỉ 1 lần trong ngày
         } catch (_) {
           // im lặng, tránh crash
@@ -126,8 +130,8 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Future<void> _loadProgressData() async {
-    await progressController.fetchProgressByUser();
-    await progressController.loadQuizStats(days: 7);
+    await streakController.fetchStreak();
+    await quizHistoryController.loadDailyStats(days: 7);
   }
 
   // Future<void> _touchAndReloadStreak() async {
@@ -622,27 +626,26 @@ class _DashboardScreenState extends State<DashboardScreen>
 class _StreakCardFromApi extends StatelessWidget {
   const _StreakCardFromApi();
 
-
   @override
   Widget build(BuildContext context) {
-    final pc = Get.find<ProgressController>();
+    final sc = Get.find<StreakController>();
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Obx(() {
-          if (!pc.streakLoaded.value) {
+          if (!sc.streakLoaded.value) {
             return const SizedBox(
               height: 80,
               child: Center(child: CircularProgressIndicator()),
             );
           }
 
-          final cur = pc.currentStreak.value;
-          final best = pc.bestStreak.value;
-          final total = pc.totalDays.value;
-          final last = pc.lastActive.value;
+          final cur   = sc.currentStreak.value;
+          final best  = sc.bestStreak.value;
+          final total = sc.totalDays.value;
+          final last  = sc.lastActive.value;;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -651,10 +654,7 @@ class _StreakCardFromApi extends StatelessWidget {
                 children: const [
                   Icon(Icons.local_fire_department, color: Colors.orange),
                   SizedBox(width: 8),
-                  Text(
-                    'Chuỗi ngày học liên tiếp',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
+                  Text('Chuỗi ngày học liên tiếp', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ],
               ),
               const SizedBox(height: 12),
@@ -671,11 +671,7 @@ class _StreakCardFromApi extends StatelessWidget {
                 Center(
                   child: Text(
                     'Hoạt động gần nhất: ${DateFormat('dd/MM/yyyy').format(last)}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontStyle: FontStyle.italic,
-                      color: Colors.grey[700],
-                    ),
+                    style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
                   ),
                 ),
               ],
@@ -719,10 +715,10 @@ class _QuizHistoryFromApi extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pc = Get.find<ProgressController>();
+    final qc = Get.find<QuizHistoryController>();
 
     return Obx(() {
-      if (pc.isQuizLoading.value) {
+      if (qc.isQuizLoading.value) {
         return const Card(
           child: Padding(
             padding: EdgeInsets.all(16),
@@ -731,8 +727,7 @@ class _QuizHistoryFromApi extends StatelessWidget {
         );
       }
 
-      // LẤY DỮ LIỆU 1 LẦN → không trùng tên
-      final list = pc.quizDaily.toList(growable: false);
+      final list = qc.quizDaily.toList(growable: false);
       if (list.isEmpty) {
         return const Card(
           child: Padding(
@@ -745,8 +740,7 @@ class _QuizHistoryFromApi extends StatelessWidget {
       final active = list.where((e) => e.totalSum > 0).toList();
       final avg = active.isEmpty
           ? 0.0
-          : active.map((e) => e.percentAccuracy).fold<double>(0, (a, b) => a + b) /
-          active.length;
+          : active.map((e) => e.percentAccuracy).reduce((a, b) => a + b) / active.length;
 
       final days = list.map((e) => e.day).toList();
       final percents = list

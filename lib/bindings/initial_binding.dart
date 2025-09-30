@@ -7,5 +7,6 @@ class InitialBinding extends Bindings {
   void dependencies() {
     AuthBinding().dependencies();
     MainBinding().dependencies();
+    
   }
 }
