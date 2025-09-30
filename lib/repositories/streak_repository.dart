@@ -57,6 +57,7 @@ class StreakRepository {
       headers: ProgressRepository.authHeaders(token),
     );
     if (res.statusCode == 200) {
+      print("✅ Check-in thành công: ${res.body}");
       return UserStreak.fromJson(jsonDecode(res.body));
     }
     throw Exception('online failed ${res.statusCode}: ${res.body}');
