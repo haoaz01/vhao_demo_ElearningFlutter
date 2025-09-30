@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import '../model/lesson_model.dart';
 
 class SearchRepository {
-  final String baseUrl = 'http://192.168.1.118:8080/api/search'; // Thay bằng URL thực tế
+  final String baseUrl = 'http://192.168.1.219:8080/api/search'; // Thay bằng URL thực tế
 
   Future<List<Lesson>> searchLessons(String keyword, {int? subjectId, int? grade}) async {
     final Map<String, String> queryParams = {};

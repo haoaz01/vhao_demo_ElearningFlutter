@@ -740,12 +740,11 @@ class _QuizHistoryFromApi extends StatelessWidget {
       final active = list.where((e) => e.totalSum > 0).toList();
       final avg = active.isEmpty
           ? 0.0
-          : active.map((e) => e.percentAccuracy).reduce((a, b) => a + b) / active.length;
+          : active.map((e) => e.percentAccuracy).reduce((a, b) => a + b) /
+          active.length;
 
       final days = list.map((e) => e.day).toList();
-      final percents = list
-          .map((e) => e.percentAccuracy.clamp(0.0, 100.0))
-          .toList();
+      final percents = list.map((e) => e.percentAccuracy).toList();
 
       return Card(
         elevation: 2,
@@ -786,10 +785,13 @@ class _QuizHistoryFromApi extends StatelessWidget {
                       touchTooltipData: BarTouchTooltipData(
                         tooltipBorderRadius: BorderRadius.circular(6),
                         getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                          final pct = rod.toY.clamp(0, 100).toStringAsFixed(0);
+                          final pct =
+                          rod.toY.clamp(0, 100).toStringAsFixed(0);
                           return BarTooltipItem(
                             '$pct%',
-                            const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                            const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white),
                           );
                         },
                       ),
@@ -808,7 +810,7 @@ class _QuizHistoryFromApi extends StatelessWidget {
                       ),
                       bottomTitles: AxisTitles(
                         sideTitles: SideTitles(
-                          showTitles: true, // đừng quên bật
+                          showTitles: true,
                           getTitlesWidget: (value, _) {
                             final idx = value.toInt();
                             if (idx < 0 || idx >= days.length) {
@@ -816,13 +818,16 @@ class _QuizHistoryFromApi extends StatelessWidget {
                             }
                             return Padding(
                               padding: const EdgeInsets.only(top: 4.0),
-                              child: Text(DateFormat('dd/MM').format(days[idx])),
+                              child:
+                              Text(DateFormat('dd/MM').format(days[idx])),
                             );
                           },
                         ),
                       ),
-                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      rightTitles:
+                      const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles:
+                      const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                     ),
                     gridData: FlGridData(
                       show: true,

@@ -8,7 +8,7 @@ import '../model/progress_model.dart';
 
 class ProgressRepository {
   // ====== CONFIG CHUNG ======
-  static const String host = 'http://192.168.1.118:8080'; // CHỈNH 1 CHỖ NÀY
+  static const String host = 'http://192.168.1.219:8080'; // CHỈNH 1 CHỖ NÀY
 
   static String get authBase    => '$host/api/auth';
   static String get progressBase=> '$host/api/progress'; // backend: /api/progress

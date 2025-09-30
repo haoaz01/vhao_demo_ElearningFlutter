@@ -282,7 +282,7 @@ class QuizRepository {
     }
   }
 
-  Future<List<DailyQuizStat>> getQuizDailyAccuracy({
+  Future<List<QuizDailyStat>> getQuizDailyAccuracy({
     required int userId,
     int days = 7,
     int? gradeId,
@@ -309,7 +309,7 @@ class QuizRepository {
 
     if (res.statusCode == 200) {
       final List<dynamic> arr = jsonDecode(res.body);
-      return arr.map((e) => DailyQuizStat.fromJson(e as Map<String, dynamic>)).toList();
+      return arr.map((e) => QuizDailyStat.fromJson(e as Map<String, dynamic>)).toList();
     } else {
       throw Exception("Failed to load quiz history: ${res.statusCode} ${res.body}");
     }

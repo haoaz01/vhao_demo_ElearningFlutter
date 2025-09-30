@@ -20,10 +20,12 @@ void main() async {
   final bool isFirstOpen = prefs.getBool('isFirstOpen') ?? true;
   final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
 
-
-  // Get.put(AuthController());
-  // Get.put(MainController());
-  // Get.put(ProgressController());
+  Get.put(MainController());
+  Get.put(AuthController());
+  Get.put(MainController());
+  Get.put(ProgressController());
+  Get.put(QuizHistoryController());
+  Get.put(QuizController());
 
 
   String initialRoute;

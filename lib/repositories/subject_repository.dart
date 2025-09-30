@@ -14,19 +14,19 @@ class SubjectRepository {
 
   SubjectRepository() {
     if (kIsWeb) {
-      baseUrl = "http://192.168.1.118:8080/api";
+      baseUrl = "http://192.168.1.219:8080/api";
     } else if (Platform.isAndroid) {
       if (_isGenymotion()) {
-        baseUrl = "http://192.168.1.118:8080/api";
+        baseUrl = "http://192.168.1.219:8080/api";
       } else if (_isEmulator()) {
-        baseUrl = "http://192.168.1.118:8080/api";
+        baseUrl = "http://192.168.1.219:8080/api";
       } else {
-        baseUrl = "http://192.168.1.118:8080/api";
+        baseUrl = "http://192.168.1.219:8080/api";
       }
     } else if (Platform.isIOS) {
       baseUrl = "http://localhost:8080/api";
     } else {
-      baseUrl = "http://192.168.1.118:8080/api";
+      baseUrl = "http://192.168.1.219:8080/api";
     }
 
     print("Using baseUrl: $baseUrl");
