@@ -9,9 +9,11 @@ import '../model/streak_info_model.dart';
 import '../model/accumulate_session_response_model.dart';
 import '../model/today_info_response_model.dart';
 import '../repositories/user_activity_repository.dart';
+import 'package:flutter_elearning_application/helpers/study_session_store.dart';
 
 class UserActivityController extends GetxController {
   final UserActivityRepository repository;
+  final StudySessionStore _store = StudySessionStore();
 
   UserActivityController({required this.repository});
 
@@ -41,13 +43,22 @@ class UserActivityController extends GetxController {
   String? get error => _error;
 
   // Session tracking
-  int _currentSessionMinutes = 0;
-  int get currentSessionMinutes => _currentSessionMinutes;
-
+  int _sessionAccruedMinutes = 0;
+  int get currentSessionMinutes =>
+      _sessionAccruedMinutes + (_bufferedSeconds ~/ 60);
   DateTime? _sessionStartTime;
   bool get isSessionActive => _sessionStartTime != null;
 
   Timer? _sessionTimer;
+
+  Timer? _tickTimer;             // NEW: tick theo giây
+  int _bufferedSeconds = 0;      // NEW: số giây chưa gửi
+
+  // NEW: progress theo giây (0..1) cho progress bar 15p
+  double get todayProgressSeconds {
+        final totalSecs = (todayTotalMinutes * 60) + _bufferedSeconds;
+        return (totalSecs / (15 * 60)).clamp(0.0, 1.0);
+      }
 
   // ========== CÁC PHƯƠNG THỨC CHÍNH ==========
 
@@ -156,6 +167,7 @@ class UserActivityController extends GetxController {
       );
 
       if (response.success) {
+
         // Cập nhật dữ liệu local ngay lập tức
         if (_todayInfo != null) {
           _todayInfo = TodayInfoResponse(
@@ -183,18 +195,18 @@ class UserActivityController extends GetxController {
         // Thông báo nếu vừa đạt mục tiêu
         if (response.statusChanged && response.isStudiedDay) {
           _showAchievementNotification();
+          fetchTodayInfo(userId);
+          fetchStreakInfo(userId);
+          fetchStreakCalendar(userId); // để lịch tô màu ngay
         }
-
         update();
-
         //check
-        return null; // ĐÃ SỬA: Trả về response thay vì AccumulateSessionResponse
-
+        return response; // ĐÃ SỬA: Trả về response thay vì AccumulateSessionResponse
 
       } else {
         _error = 'Lỗi từ server: ${response.message}';
         update();
-        return null;
+        return response; // FIX: trả về response đúng
       }
     } catch (e) {
       print('❌ accumulateSessionTime error: $e');
@@ -204,52 +216,90 @@ class UserActivityController extends GetxController {
     }
   }
 
-  // Bắt đầu study session
-  void startStudySession() {
-    if (_sessionStartTime != null) return; // Đã có session active
-
-    _sessionStartTime = DateTime.now();
-    _currentSessionMinutes = 0;
-
-    // Timer cập nhật mỗi phút
-    _sessionTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
-      if (_sessionStartTime != null) {
-        _currentSessionMinutes = DateTime.now().difference(_sessionStartTime!).inMinutes;
-
-        // Tự động gửi cập nhật mỗi 5 phút hoặc khi đạt milestones
-        if (_currentSessionMinutes % 5 == 0 || _currentSessionMinutes == 15) {
-          _autoSendSessionUpdate();
-        }
-
-        update();
-      }
-    });
-
+  // NEW: đảm bảo auto-session luôn bật khi user vào app/màn
+  Future<void> ensureAutoSessionStarted(int userId) async {
+    final restored = await _store.loadIfSameDay();
+    if (_sessionStartTime == null) {
+      _sessionStartTime = restored?.sessionStartTime ?? DateTime.now();
+      _bufferedSeconds = restored?.bufferedSeconds ?? 0;
+      _sessionAccruedMinutes = restored?.sessionAccruedMinutes ?? 0; // NEW
+    }
+    _startTickTimer(userId);
     update();
   }
 
-  // Kết thúc study session và gửi dữ liệu
-  Future<void> endStudySession(int userId) async {
-    _sessionTimer?.cancel();
-    _sessionTimer = null;
+  void _startTickTimer(int userId) {
+    _tickTimer?.cancel();
+    _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+      if (_sessionStartTime == null) return;
 
-    if (_sessionStartTime != null && _currentSessionMinutes > 0) {
-      await accumulateSessionTime(
-        userId: userId,
-        sessionMinutes: _currentSessionMinutes,
-      );
+      _bufferedSeconds += 1;
+
+      // Lưu snapshot mỗi 5s
+      if (_bufferedSeconds % 5 == 0) {
+        await _store.save(
+          sessionStartTime: _sessionStartTime,
+          bufferedSeconds: _bufferedSeconds,
+          sessionAccruedMinutes: _sessionAccruedMinutes, // NEW
+        );
+      }
+
+      // Đủ 60s -> flush
+      if (_bufferedSeconds >= 60) {
+        final m = _bufferedSeconds ~/ 60;
+        _bufferedSeconds = _bufferedSeconds % 60;
+        _sessionAccruedMinutes += m; // NEW: cộng vào phiên hiện tại
+        await accumulateSessionTime(userId: userId, sessionMinutes: m);
+
+        // lưu lại ngay sau khi flush
+        await _store.save(
+          sessionStartTime: _sessionStartTime,
+          bufferedSeconds: _bufferedSeconds,
+          sessionAccruedMinutes: _sessionAccruedMinutes,
+        );
+      }
+
+      update(); // để progress chạy mượt theo giây
+    });
+  }
+
+  // Kết thúc (flush phần phút còn lại nếu >=60s)
+  Future<void> endStudySession(int userId) async {
+    await _store.save(
+      sessionStartTime: _sessionStartTime,
+      bufferedSeconds: _bufferedSeconds,
+      sessionAccruedMinutes: _sessionAccruedMinutes,
+    );
+
+    _tickTimer?.cancel();
+    _tickTimer = null;
+
+    final m = _bufferedSeconds ~/ 60;
+    if (m > 0) {
+      _bufferedSeconds = _bufferedSeconds % 60;
+      _sessionAccruedMinutes += m; // NEW
+      await accumulateSessionTime(userId: userId, sessionMinutes: m);
     }
 
     _sessionStartTime = null;
-    _currentSessionMinutes = 0;
+    _sessionAccruedMinutes = 0; // NEW: reset
+    _bufferedSeconds = 0;
+    await _store.clear();
     update();
+  }
+  Future<void> persistSessionSnapshot() async {
+    await _store.save(
+      sessionStartTime: _sessionStartTime,
+      bufferedSeconds: _bufferedSeconds,
+      sessionAccruedMinutes: _sessionAccruedMinutes, // <- KHÔNG để null
+    );
   }
 
   // Tự động gửi cập nhật session (cho session dài)
   Future<void> _autoSendSessionUpdate() async {
     // Có thể thêm logic gửi cập nhật tự động ở đây
     // để tránh mất dữ liệu nếu app bị đóng đột ngột
-    print('🔄 Auto session update: $_currentSessionMinutes phút');
+    print('🔄 Auto session update: $currentSessionMinutes phút');
   }
 
   // ========== HELPER METHODS ==========
@@ -316,6 +366,7 @@ class UserActivityController extends GetxController {
   @override
   void onClose() {
     _sessionTimer?.cancel();
+    _tickTimer?.cancel();
     super.onClose();
   }
 

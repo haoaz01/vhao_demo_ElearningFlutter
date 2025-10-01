@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../model/calendar_day_model.dart';
-import '../model/calendar_day_model.dart';
 import '../model/user_streak_response_model.dart';
 import '../model/streak_info_model.dart';
 import '../controllers/auth_controller.dart';
@@ -34,7 +33,9 @@ class _StreakScreenState extends State<StreakScreen> {
         ? Get.find<UserActivityController>()
         : Get.put(UserActivityController(
       repository: UserActivityRepository(client: Get.find()),
-    ));
+    ),
+      permanent: true,
+    );
     authController = Get.find<AuthController>();
 
     now = widget.overrideNow ?? DateTime.now();
@@ -109,11 +110,6 @@ class _StreakScreenState extends State<StreakScreen> {
         isInCurrentStreak: false,
       );
     }
-  }
-
-  double get _todayProgress {
-    final todayMinutes = userActivityController.todayTotalMinutes;
-    return (todayMinutes / 15.0 * 100).clamp(0.0, 100.0);
   }
 
   int get _remainingMinutes => userActivityController.remainingMinutes;
@@ -323,8 +319,8 @@ class _StreakScreenState extends State<StreakScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            LinearProgressIndicator(
-              value: _todayProgress / 100,
+        LinearProgressIndicator(
+              value: Get.find<UserActivityController>().todayProgressSeconds,
               backgroundColor: Colors.grey[300],
               color: todayStudied ? Colors.green : Colors.orange,
               minHeight: 12,
@@ -348,7 +344,6 @@ class _StreakScreenState extends State<StreakScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            _buildStudySessionButton(),
           ],
         ),
       ),
@@ -361,8 +356,7 @@ class _StreakScreenState extends State<StreakScreen> {
         if (!controller.isSessionActive) {
           return ElevatedButton(
             onPressed: () {
-              controller.startStudySession();
-              Get.snackbar(
+              controller.ensureAutoSessionStarted(authController.userId.value);              Get.snackbar(
                 'Bắt đầu học',
                 'Phiên học đã được bắt đầu. Hãy tập trung!',
                 backgroundColor: Colors.green,

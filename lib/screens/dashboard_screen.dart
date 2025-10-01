@@ -6,8 +6,6 @@ import '../controllers/progress_controller.dart';
 import '../controllers/quiz_history_controller.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/user_activity_controller.dart';
-import '../model/calendar_day_model.dart';
-import '../model/user_activity_dto_model.dart';
 import '../repositories/user_activity_repository.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -24,9 +22,7 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen>
     with WidgetsBindingObserver {
-  Timer? _onlineTimer;
-  DateTime? _sessionStart;
-  bool _markedOnlineToday = false;
+
 
   Timer? _midnightTimer;
 
@@ -61,61 +57,40 @@ class _DashboardScreenState extends State<DashboardScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // Khởi tạo UserActivityController
+    // KHỞI TẠO CONTROLLER TRƯỚC
     userActivityController = Get.isRegistered<UserActivityController>()
         ? Get.find<UserActivityController>()
         : Get.put(UserActivityController(
       repository: UserActivityRepository(client: Get.find()),
-    ));
+    ),
+      permanent: true,
+    );
 
-    _loadProgressData();
+    // Các việc bất đồng bộ: chạy sau frame đầu, KHÔNG await trong initState
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userId = authController.userId.value;
+      userActivityController.ensureAutoSessionStarted(userId);
+      _loadProgressData();              // vẫn gọi như cũ
+    });
+
     _scheduleMidnightRefresh();
-    _startOnlineSession();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _midnightTimer?.cancel();
-    _stopOnlineSession();
     super.dispose();
   }
 
-  void _startOnlineSession() {
-    _sessionStart ??= DateTime.now();
-    _onlineTimer?.cancel();
-    _onlineTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
-      if (_markedOnlineToday || _sessionStart == null) return;
-      final elapsed = DateTime.now().difference(_sessionStart!);
-      if (elapsed.inMinutes >= 15) {
-        try {
-          // SỬ DỤNG accumulateSessionTime THAY VÌ recordActivity
-          await userActivityController.accumulateSessionTime(
-            userId: authController.userId.value,
-            sessionMinutes: 15,
-          );
-          _markedOnlineToday = true;
-        } catch (_) {
-          // im lặng, tránh crash
-        } finally {
-          _onlineTimer?.cancel();
-        }
-      }
-    });
-  }
-
-  void _stopOnlineSession() {
-    _onlineTimer?.cancel();
-    _onlineTimer = null;
-  }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _startOnlineSession();
+      userActivityController.ensureAutoSessionStarted(authController.userId.value);
       _loadProgressData();
     } else if (state == AppLifecycleState.paused) {
-      _stopOnlineSession();
+      userActivityController.persistSessionSnapshot(); // không await
     }
   }
 
@@ -124,12 +99,13 @@ class _DashboardScreenState extends State<DashboardScreen>
     final now = DateTime.now();
     final tomorrow = DateTime(now.year, now.month, now.day + 1);
     final diff = tomorrow.difference(now);
-    _midnightTimer = Timer(diff + const Duration(seconds: 1), () {
-      _markedOnlineToday = false;
-      _sessionStart = DateTime.now();
+    _midnightTimer = Timer(diff + const Duration(seconds: 1), () async {
+      await userActivityController.persistSessionSnapshot(); // snapshot lần cuối
+      _loadProgressData();
+      _scheduleMidnightRefresh();{
       _loadProgressData();
       _scheduleMidnightRefresh();
-    });
+    }});
   }
 
   Future<void> _loadProgressData() async {
@@ -661,8 +637,7 @@ class _StreakCardNew extends StatelessWidget {
             final currentStreak = controller.currentStreak;
             final todayStudied = controller.isTodayTargetAchieved;
             final remainingMinutes = controller.remainingMinutes;
-            final progress = (todayMinutes / 15.0).clamp(0.0, 1.0);
-
+            final progress = controller.todayProgressSeconds; // vẽ theo GIÂY
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -819,57 +794,6 @@ class _StreakCardNew extends StatelessWidget {
                     ),
                   ),
                 ],
-
-                // Nút hành động
-                SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          if (controller.isSessionActive) {
-                            controller.endStudySession(authController.userId.value);
-                            Get.snackbar(
-                              'Kết thúc học',
-                              'Đã lưu thời gian học tập!',
-                              backgroundColor: Colors.blue,
-                              colorText: Colors.white,
-                            );
-                          } else {
-                            controller.startStudySession();
-                            Get.snackbar(
-                              'Bắt đầu học',
-                              'Phiên học đã được bắt đầu. Hãy tập trung!',
-                              backgroundColor: Colors.green,
-                              colorText: Colors.white,
-                            );
-                          }
-                        },
-                        icon: Icon(
-                          controller.isSessionActive ? Icons.stop : Icons.play_arrow,
-                          size: 16,
-                        ),
-                        label: Text(controller.isSessionActive ? 'Kết thúc học' : 'Bắt đầu học'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: controller.isSessionActive ? Colors.red : Colors.green,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    IconButton(
-                      icon: Icon(Icons.arrow_forward),
-                      onPressed: () {
-                        Get.to(() => const StreakScreen());
-                      },
-                      tooltip: 'Xem chi tiết streak',
-                    ),
-                  ],
-                ),
 
                 // Hiển thị thời gian phiên học hiện tại
                 if (controller.isSessionActive) ...[
