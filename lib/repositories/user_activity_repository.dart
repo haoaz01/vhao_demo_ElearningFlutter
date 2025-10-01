@@ -19,12 +19,17 @@ class UserActivityRepository {
   // 1. Ghi nhận activity mới (cộng dồn)
   Future<UserActivityDTO> recordActivity(int userId, DateTime activityDate, int additionalMinutes) async {
     try {
-      final url = Uri.parse('$baseUrl?userId=${userId.toString()}&activityDate=${_formatDate(activityDate)}&additionalMinutes=$additionalMinutes');
+      final url = Uri.parse('$baseUrl'); // POST chuẩn, params trong body
       print('📝 POST recordActivity: $url');
 
       final response = await client.post(
         url,
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {
+          'userId': userId.toString(),
+          'activityDate': _formatDate(activityDate),
+          'additionalMinutes': additionalMinutes.toString(),
+        },
       ).timeout(const Duration(seconds: 15));
 
       print('📡 Response status: ${response.statusCode}');
@@ -112,6 +117,7 @@ class UserActivityRepository {
         final Map<String, dynamic> data = json.decode(response.body);
 
         if (data['success'] == true) {
+          // ⚠️ Backend không có "data", parse trực tiếp
           return StreakInfo.fromJson(data);
         } else {
           throw Exception(data['message'] ?? 'Unknown error from server');
@@ -320,7 +326,7 @@ class UserActivityRepository {
   // THÊM PHƯƠNG THỨC KIỂM TRA KẾT NỐI CHI TIẾT
   Future<Map<String, dynamic>> testConnectionDetailed() async {
     try {
-      final url = Uri.parse('$baseUrl/streak/1?months=1'); // Test với user ID 1
+      final url = Uri.parse('$baseUrl/streak-calendar/1?months=1'); // Test đúng API mà Streak screen dùng
       print('🔍 Testing connection to: $url');
 
       final response = await client.get(
