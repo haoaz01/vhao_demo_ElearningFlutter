@@ -1,5 +1,5 @@
-// lib/models/record_activity_response.dart
-import 'package:flutter_elearning_application/model/user_activity.dart';
+// lib/models/record_activity_response_model.dart
+import 'package:flutter_elearning_application/model/user_activity_model.dart';
 
 class RecordActivityResponse {
   final bool success;

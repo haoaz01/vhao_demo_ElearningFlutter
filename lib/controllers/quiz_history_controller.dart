@@ -1,8 +1,8 @@
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../model/daily_quiz_stat.dart';
-import '../model/quiz_attempt.dart';
+import '../model/daily_quiz_stat_model.dart';
+import '../model/quiz_attempt_model.dart';
 import '../model/quiz_history_model.dart';
 import '../repositories/quiz_result_repository.dart';
 import '../repositories/quiz_history_repository.dart';

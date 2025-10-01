@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-import '../model/quiz_attempt.dart';
+import '../model/quiz_attempt_model.dart';
 import 'progress_repository.dart';
 
 /// Repo duy nhất cho lịch sử quiz.

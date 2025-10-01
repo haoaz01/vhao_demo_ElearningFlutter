@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import '../model/calendar_day.dart';
-import '../model/user_streak_response.dart';
+import '../model/calendar_day_model.dart';
+import '../model/calendar_day_model.dart';
+import '../model/user_streak_response_model.dart';
+import '../model/streak_info_model.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/user_activity_controller.dart';
 import '../repositories/user_activity_repository.dart';
@@ -42,10 +44,13 @@ class _StreakScreenState extends State<StreakScreen> {
     _init();
   }
 
-
-
   Future<void> _init() async {
-    await userActivityController.fetchUserStreakAndCalendar(authController.userId.value);
+    // Load cả streak info và calendar data
+    await Future.wait([
+      userActivityController.fetchStreakInfo(authController.userId.value),
+      userActivityController.fetchStreakCalendar(authController.userId.value),
+      userActivityController.fetchTodayInfo(authController.userId.value),
+    ]);
   }
 
   void _changeMonth(int offset) {
@@ -62,7 +67,7 @@ class _StreakScreenState extends State<StreakScreen> {
   }
 
   List<DateTime> _currentChain() {
-    return userActivityController.streakData?.streakDays ?? [];
+    return userActivityController.streakCalendar?.streakDays ?? [];
   }
 
   bool _isInChain(DateTime d, List<DateTime> chain) {
@@ -71,29 +76,29 @@ class _StreakScreenState extends State<StreakScreen> {
   }
 
   int _getStudiedDaysInMonth() {
-    if (userActivityController.streakData == null) return 0;
+    if (userActivityController.streakCalendar == null) return 0;
 
-    final monthDays = userActivityController.streakData!.calendarDays
+    final monthDays = userActivityController.streakCalendar!.calendarDays
         .where((day) => day.date.month == currentMonth && day.date.year == currentYear)
         .toList();
     return monthDays.where((day) => day.studied).length;
   }
 
   int _getStreakDaysInMonth() {
-    if (userActivityController.streakData == null) return 0;
+    if (userActivityController.streakCalendar == null) return 0;
 
-    final monthDays = userActivityController.streakData!.calendarDays
+    final monthDays = userActivityController.streakCalendar!.calendarDays
         .where((day) => day.date.month == currentMonth && day.date.year == currentYear)
         .toList();
     return monthDays.where((day) => day.isInCurrentStreak).length;
   }
 
   CalendarDayDTO? get _todayData {
-    if (userActivityController.streakData == null) return null;
+    if (userActivityController.streakCalendar == null) return null;
 
     final today = DateTime.now();
     try {
-      return userActivityController.streakData!.calendarDays.firstWhere(
+      return userActivityController.streakCalendar!.calendarDays.firstWhere(
             (day) => _dayKey(day.date) == _dayKey(today),
       );
     } catch (e) {
@@ -107,24 +112,19 @@ class _StreakScreenState extends State<StreakScreen> {
   }
 
   double get _todayProgress {
-    final today = _todayData;
-    if (today == null) return 0.0;
-    return (today.minutesStudied / 15.0 * 100).clamp(0.0, 100.0);
+    final todayMinutes = userActivityController.todayTotalMinutes;
+    return (todayMinutes / 15.0 * 100).clamp(0.0, 100.0);
   }
 
-  int get _remainingMinutes {
-    final today = _todayData;
-    if (today == null) return 15;
-    return (15 - today.minutesStudied).clamp(0, 15);
-  }
+  int get _remainingMinutes => userActivityController.remainingMinutes;
 
-  // THÊM PHƯƠNG THỨC TÍNH BEST STREAK
+  // Tính best streak từ dữ liệu calendar
   int _calculateBestStreak() {
-    final streakData = userActivityController.streakData;
-    if (streakData == null) return 0;
+    final streakCalendar = userActivityController.streakCalendar;
+    if (streakCalendar == null) return 0;
 
-    // Nếu có longestStreak từ API thì dùng, không thì dùng currentStreak
-    return streakData.currentStreak; // Tạm thời dùng currentStreak
+    // Tạm thời dùng current streak, có thể cải tiến tính toán từ lịch sử
+    return streakCalendar.currentStreak;
   }
 
   @override
@@ -147,7 +147,7 @@ class _StreakScreenState extends State<StreakScreen> {
         actions: [
           GetBuilder<UserActivityController>(
             builder: (controller) {
-              final today = _todayData;
+              final todayMinutes = controller.todayTotalMinutes;
               return Padding(
                 padding: const EdgeInsets.only(right: 8.0),
                 child: Row(
@@ -160,7 +160,7 @@ class _StreakScreenState extends State<StreakScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        '${today?.minutesStudied ?? 0}/15p',
+                        '$todayMinutes/15p',
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -169,8 +169,8 @@ class _StreakScreenState extends State<StreakScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // SỬA NÚT REFRESH
-                    if (controller.isLoading)
+                    // Refresh button với loading state
+                    if (controller.isLoading || controller.isLoadingCalendar)
                       const Padding(
                         padding: EdgeInsets.all(8.0),
                         child: SizedBox(
@@ -196,13 +196,17 @@ class _StreakScreenState extends State<StreakScreen> {
             },
           ),
         ],
-        ),
+      ),
       body: GetBuilder<UserActivityController>(
         builder: (controller) {
-          if (controller.isLoading && controller.streakData == null) {
+          // Hiển thị loading nếu đang tải dữ liệu lần đầu
+          if ((controller.isLoading || controller.isLoadingCalendar) &&
+              controller.streakCalendar == null &&
+              controller.streakInfo == null) {
             return const Center(child: CircularProgressIndicator());
           }
 
+          // Hiển thị lỗi nếu có
           if (controller.error != null) {
             return Center(
               child: Padding(
@@ -235,20 +239,14 @@ class _StreakScreenState extends State<StreakScreen> {
                       children: [
                         ElevatedButton(
                           onPressed: () {
-                            controller.fetchUserStreakAndCalendar(authController.userId.value);
+                            controller.refreshData(authController.userId.value);
                           },
                           child: const Text('Thử lại'),
                         ),
                         const SizedBox(width: 12),
                         OutlinedButton(
                           onPressed: () {
-                            // Debug info
-                            print('=== DEBUG STREAK INFO ===');
-                            print('User ID: ${authController.userId.value}');
-                            print('Is Connected: ${controller.isConnected}');
-                            print('Is Loading: ${controller.isLoading}');
-                            print('Error: ${controller.error}');
-                            print('Streak Data: ${controller.streakData}');
+                            controller.printDebugInfo();
                           },
                           child: const Text('Debug Info'),
                         ),
@@ -263,9 +261,8 @@ class _StreakScreenState extends State<StreakScreen> {
           final chain = _currentChain();
           final studiedDaysThisMonth = _getStudiedDaysInMonth();
           final streakDaysThisMonth = _getStreakDaysInMonth();
-          final today = _todayData;
-          final todayStudied = today?.studied ?? false;
-          final todayMinutes = today?.minutesStudied ?? 0;
+          final todayStudied = controller.isTodayTargetAchieved;
+          final todayMinutes = controller.todayTotalMinutes;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(12),
@@ -493,9 +490,8 @@ class _StreakScreenState extends State<StreakScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _stat('${userActivityController.streakData?.currentStreak ?? 0}', 'Ngày liên tiếp'),
+                _stat('${userActivityController.currentStreak}', 'Ngày liên tiếp'),
                 _stat('$studiedDaysThisMonth', 'Ngày học\ntháng này'),
-                // SỬA LỖI Ở ĐÂY: thay ?? () bằng ?? 0
                 _stat('${_calculateBestStreak()}', 'Kỷ lục'),
               ],
             ),
@@ -533,7 +529,7 @@ class _StreakScreenState extends State<StreakScreen> {
 
                 CalendarDayDTO dayData;
                 try {
-                  dayData = userActivityController.streakData!.calendarDays.firstWhere(
+                  dayData = userActivityController.streakCalendar!.calendarDays.firstWhere(
                         (day) => _dayKey(day.date) == _dayKey(d),
                   );
                 } catch (e) {
@@ -630,7 +626,7 @@ class _StreakScreenState extends State<StreakScreen> {
 
                 CalendarDayDTO dayData;
                 try {
-                  dayData = userActivityController.streakData!.calendarDays.firstWhere(
+                  dayData = userActivityController.streakCalendar!.calendarDays.firstWhere(
                         (calendarDay) => _dayKey(calendarDay.date) == _dayKey(date),
                   );
                 } catch (e) {
@@ -729,62 +725,62 @@ class _StreakScreenState extends State<StreakScreen> {
     int minutes = 0,
   }) {
     return Container(
-        margin: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          color: studied
-              ? (inStreak ? Colors.orange : Colors.green)
-              : Colors.grey[200],
-          borderRadius: BorderRadius.circular(8),
-          border: isToday
-              ? Border.all(color: Colors.purple, width: 2)
-              : null,
-        ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
+      margin: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: studied
+            ? (inStreak ? Colors.orange : Colors.green)
+            : Colors.grey[200],
+        borderRadius: BorderRadius.circular(8),
+        border: isToday
+            ? Border.all(color: Colors.purple, width: 2)
+            : null,
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
           Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (studied)
-              Icon(
-                inStreak ? Icons.local_fire_department : Icons.check,
-                color: Colors.white,
-                size: inStreak ? 20 : 16,
-              )
-            else
-              Text(
-                '$day',
-                style: TextStyle(
-                  color: isToday ? Colors.purple[900] : Colors.black54,
-                  fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 12,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (studied)
+                Icon(
+                  inStreak ? Icons.local_fire_department : Icons.check,
+                  color: Colors.white,
+                  size: inStreak ? 20 : 16,
+                )
+              else
+                Text(
+                  '$day',
+                  style: TextStyle(
+                    color: isToday ? Colors.purple[900] : Colors.black54,
+                    fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 12,
+                  ),
+                ),
+            ],
+          ),
+          if (minutes > 0 && !inStreak) ...[
+            Positioned(
+              top: 2,
+              right: 2,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                decoration: BoxDecoration(
+                  color: Colors.green[700],
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '$minutes',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 8,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
+            ),
           ],
-        ),
-        if (minutes > 0 && !inStreak) ...[
-    Positioned(
-    top: 2,
-    right: 2,
-    child: Container(
-    padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-    decoration: BoxDecoration(
-    color: Colors.green[700],
-    borderRadius: BorderRadius.circular(4),
-    ),
-    child: Text(
-    '$minutes',
-    style: const TextStyle(
-    color: Colors.white,
-    fontSize: 8,
-    fontWeight: FontWeight.bold,
-    ),
-    ),
-    ),
-    ),
-    ],
-    ],
-    ),
+        ],
+      ),
     );
   }
 

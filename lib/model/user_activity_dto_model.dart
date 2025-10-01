@@ -14,9 +14,9 @@ class UserActivityDTO {
   factory UserActivityDTO.fromJson(Map<String, dynamic> json) {
     return UserActivityDTO(
       id: json['id'],
-      userId: json['userId'],
-      activityDate: DateTime.parse(json['activityDate']),
-      minutesUsed: json['minutesUsed'],
+      userId: json['userId'] ?? 0,
+      activityDate: DateTime.parse(json['activityDate'].toString()),
+      minutesUsed: json['minutesUsed'] ?? 0,
     );
   }
 

@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:flutter_elearning_application/model/daily_quiz_stat.dart';
+import 'package:flutter_elearning_application/model/daily_quiz_stat_model.dart';
 import 'package:flutter_elearning_application/repositories/progress_repository.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';

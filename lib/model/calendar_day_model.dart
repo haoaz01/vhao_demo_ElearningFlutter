@@ -16,18 +16,17 @@ class CalendarDayDTO {
       date: DateTime.parse(json['date'].toString()),
       studied: json['studied'] == true,
       minutesStudied: (json['minutesStudied'] ?? 0) as int,
-      isInCurrentStreak: json['isInCurrentStreak'] == true,
+      // Sửa: backend trả về 'inCurrentStreak' thay vì 'isInCurrentStreak'
+      isInCurrentStreak: json['inCurrentStreak'] == true,
     );
   }
 
   Map<String, dynamic> toJson() {
-    // Backend dùng LocalDate => chỉ cần yyyy-MM-dd
-    final String ymd = date.toIso8601String().split('T')[0];
     return {
-      'date': ymd,
+      'date': date.toIso8601String().split('T')[0],
       'studied': studied,
       'minutesStudied': minutesStudied,
-      'isInCurrentStreak': isInCurrentStreak,
+      'inCurrentStreak': isInCurrentStreak, // Sửa để khớp backend
     };
   }
 }
