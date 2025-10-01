@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:flutter_elearning_application/controllers/auth_controller.dart';
 import '../app/routes/app_routes.dart';
+import 'package:flutter_elearning_application/widgets/home_top_summary.dart';
 
 class HomeScreen extends StatelessWidget {
   final AuthController authController = Get.find<AuthController>();
@@ -167,24 +168,29 @@ class HomeScreen extends StatelessWidget {
                   "Chào mừng bạn quay trở lại E-learning App!",
                   style: TextStyle(fontSize: 14.sp, color: Colors.grey), // Giảm từ 16.sp xuống 14.sp
                 ),
+                SizedBox(height: 12.h),
+
+            // ===== 3 card đồng bộ từ Dashboard =====
+                const HomeTopSummary(),
+
                 SizedBox(height: 20.h),
 
                 // ===== Dashboard Card - FIXED =====
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    // Xác định số cột dựa trên chiều rộng màn hình
-                    final screenWidth = constraints.maxWidth;
-                    final crossAxisCount = screenWidth < 300 ? 1 : 3;
-
-                    if (crossAxisCount == 1) {
-                      // Hiển thị dạng list cho màn hình rất nhỏ
-                      return _buildDashboardList();
-                    } else {
-                      // Hiển thị dạng grid cho màn hình bình thường
-                      return _buildDashboardGrid();
-                    }
-                  },
-                ),
+                // LayoutBuilder(
+                //   builder: (context, constraints) {
+                //     // Xác định số cột dựa trên chiều rộng màn hình
+                //     final screenWidth = constraints.maxWidth;
+                //     final crossAxisCount = screenWidth < 300 ? 1 : 3;
+                //
+                //     if (crossAxisCount == 1) {
+                //       // Hiển thị dạng list cho màn hình rất nhỏ
+                //       return _buildDashboardList();
+                //     } else {
+                //       // Hiển thị dạng grid cho màn hình bình thường
+                //       return _buildDashboardGrid();
+                //     }
+                //   },
+                // ),
                 SizedBox(height: 20.h),
 
                 // ===== Danh sách môn học =====
