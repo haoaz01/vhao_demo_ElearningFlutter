@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import '../controllers/quiz_history_controller.dart';
 import '../controllers/quiz_controller.dart';
 import '../model/question_content_model.dart';
 import '../widgets/inline_latex_text.dart';
@@ -19,15 +18,14 @@ class QuizHistoryScreen extends StatefulWidget {
 
 class _QuizHistoryScreenState extends State<QuizHistoryScreen>
     with SingleTickerProviderStateMixin {
-  final QuizHistoryController quizController = Get.find<QuizHistoryController>();
-  final QuizController questionController = Get.find<QuizController>();
+  final QuizController quizController = Get.find<QuizController>();
   late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    quizController.fetchQuizHistory(widget.quizId); // ✅ chỉ gọi controller này
-    questionController.fetchQuizQuestions(widget.quizId);
+    quizController.fetchQuizHistory(widget.quizId);
+    quizController.fetchQuizQuestions(widget.quizId);
     _tabController = TabController(length: 2, vsync: this);
   }
 
@@ -106,7 +104,7 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
 
   Widget _buildHistoryTab() {
     return Obx(() {
-      if (quizController.isLoadingHistory.value) {
+      if (quizController.isHistoryLoading.value) {
         return Center(
           child: CircularProgressIndicator(
             valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
@@ -114,14 +112,17 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
         );
       }
 
-      if (quizController.history.isEmpty) { // 👈
+      if (quizController.quizHistory.isEmpty) {
         return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.history, size: 64.w, color: Colors.green.shade300),
               SizedBox(height: 16.h),
-              Text("Chưa có lịch sử làm bài", style: TextStyle(fontSize: 18.sp)),
+              Text(
+                "Chưa có lịch sử làm bài",
+                style: TextStyle(fontSize: 18.sp),
+              ),
             ],
           ),
         );
@@ -129,9 +130,9 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
 
       return ListView.builder(
         padding: EdgeInsets.all(16.r),
-        itemCount: quizController.history.length,
+        itemCount: quizController.quizHistory.length,
         itemBuilder: (context, index) {
-          final attempt = quizController.history[index];
+          final attempt = quizController.quizHistory[index];
           return Card(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12.r),
@@ -208,14 +209,17 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
 
   Widget _buildExplanationTab() {
     return Obx(() {
-      if (questionController.questions.isEmpty) { // 👈
+      if (quizController.questions.isEmpty) {
         return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.menu_book, size: 64.w, color: Colors.green.shade300),
               SizedBox(height: 16.h),
-              Text("Chưa có dữ liệu giải thích", style: TextStyle(fontSize: 18.sp)),
+              Text(
+                "Chưa có dữ liệu giải thích",
+                style: TextStyle(fontSize: 18.sp),
+              ),
             ],
           ),
         );
@@ -223,10 +227,11 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
 
       return ListView.builder(
         padding: EdgeInsets.all(16.r),
-        itemCount: questionController.questions.length, // 👈
+        itemCount: quizController.questions.length,
         itemBuilder: (context, index) {
-          final question = questionController.questions[index]; // 👈
+          final question = quizController.questions[index];
           final correctChoice = question.choices.firstWhere((c) => c.isCorrect);
+
           return Card(
             margin: EdgeInsets.only(bottom: 20.h),
             shape: RoundedRectangleBorder(
@@ -304,8 +309,8 @@ class _QuizHistoryScreenState extends State<QuizHistoryScreen>
   }
 
   Color _getScoreColor(double score) {
-    if (score >= 8) return Colors.green.shade700;
-    if (score >= 5) return Colors.orange;
+    if (score >= 8) return Colors.orange;
+    if (score >= 5) return Colors.green.shade700;
     return Colors.red;
   }
 

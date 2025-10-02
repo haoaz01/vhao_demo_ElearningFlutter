@@ -5,7 +5,6 @@ import '../model/daily_quiz_stat_model.dart';
 import '../model/quiz_attempt_model.dart';
 import '../model/quiz_history_model.dart';
 import '../repositories/quiz_result_repository.dart';
-import '../repositories/quiz_history_repository.dart';
 
 class QuizHistoryController extends GetxController {
   final quizDaily = <QuizDailyStat>[].obs;
@@ -54,15 +53,4 @@ class QuizHistoryController extends GetxController {
     }
   }
 
-  Future<void> fetchQuizHistory(int quizId) async {
-    isLoadingHistory.value = true;
-    try {
-      final uid = await _uid();
-      final raw = await QuizHistoryRepository.getHistory(quizId, uid);
-      history.assignAll(raw.map((e) => QuizHistory.fromJson(e)).toList());
-    } finally {
-      isLoadingHistory.value = false;
-    }
-  }
 }
-

@@ -1,8 +1,5 @@
-import 'package:flutter_elearning_application/controllers/progress_controller.dart';
-import 'package:flutter_elearning_application/controllers/quiz_history_controller.dart';
 import 'package:get/get.dart';
 import '../model/quiz_history_model.dart';
-import '../controllers/quiz_history_controller.dart';
 import '../model/quiz_model.dart';
 import '../model/question_model.dart';
 import '../model/choice_model.dart';
@@ -14,7 +11,6 @@ import 'package:flutter/material.dart';
 class QuizController extends GetxController {
   final QuizRepository quizRepository = QuizRepository();
 
-
   var isLoading = false.obs;
   var quizzes = <Quiz>[].obs;
   var fifteenMinuteQuizzes = <Quiz>[].obs;
@@ -25,10 +21,14 @@ class QuizController extends GetxController {
   var lastResult = Rxn<QuizResult>();
   var chapters = <Map<String, dynamic>>[].obs;
   var quizResults = <String, Map<String, dynamic>>{}.obs;
-  // var quizHistory = <QuizHistory>[].obs;
+  var quizHistory = <QuizHistory>[].obs;
   var isHistoryLoading = false.obs;
   var bestScore = <String, Map<String, dynamic>>{}.obs;
   var isBestScoreLoading = false.obs;
+
+  var averageAccuracy = 0.0.obs;
+  var isAccuracyLoading = false.obs;
+  var accuracyError = RxString('');
 
   /// Subject mapping theo grade
   final subjectMapping = <int, List<Map<String, dynamic>>>{}.obs;
@@ -36,7 +36,6 @@ class QuizController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    // Get.put(QuizController());
     fetchAllQuizzes();
   }
 
@@ -119,7 +118,6 @@ class QuizController extends GetxController {
       }
 
       final result = await quizRepository.submitQuiz(quizId, userAnswers, durationSeconds);
-      Get.find<QuizHistoryController>().loadDailyStats(days: 7);
       lastResult.value = result;
 
       print("✅ Quiz submitted successfully: ${result.score}");
@@ -224,31 +222,31 @@ class QuizController extends GetxController {
     return quizResults["$chapterName-$setTitle"]?["completed"] ?? false;
   }
 
-  // Future<void> fetchQuizHistory(int quizId) async {
-  //   try {
-  //     isHistoryLoading.value = true;
-  //
-  //     final authController = Get.find<AuthController>();
-  //     final userId = authController.userId.value;
-  //
-  //     if (userId == 0) {
-  //       throw Exception("User not logged in");
-  //     }
-  //
-  //     final history = await quizRepository.getQuizHistory(quizId, userId);
-  //     quizHistory.assignAll(history);
-  //   } catch (e) {
-  //     Get.snackbar(
-  //       "Lỗi",
-  //       "Không thể tải lịch sử làm bài: ${e.toString()}",
-  //       snackPosition: SnackPosition.BOTTOM,
-  //       backgroundColor: Colors.red,
-  //       colorText: Colors.white,
-  //     );
-  //   } finally {
-  //     isHistoryLoading.value = false;
-  //   }
-  // }
+  Future<void> fetchQuizHistory(int quizId) async {
+    try {
+      isHistoryLoading.value = true;
+
+      final authController = Get.find<AuthController>();
+      final userId = authController.userId.value;
+
+      if (userId == 0) {
+        throw Exception("User not logged in");
+      }
+
+      final history = await quizRepository.getQuizHistory(quizId, userId);
+      quizHistory.assignAll(history);
+    } catch (e) {
+      Get.snackbar(
+        "Lỗi",
+        "Không thể tải lịch sử làm bài: ${e.toString()}",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      isHistoryLoading.value = false;
+    }
+  }
 
   /// 🔹 Tìm subjectId dựa vào grade + subjectName
   Future<int?> _getSubjectIdByGradeAndName(int gradeId, String subjectName) async {
@@ -267,30 +265,25 @@ class QuizController extends GetxController {
   }
 
   Future<void> fetchBestScoreForUser(int quizId, int userId) async {
-    final key = "$quizId-$userId";
     try {
       isBestScoreLoading.value = true;
 
       final data = await quizRepository.getBestScoreForUser(quizId, userId);
 
       if (data.isNotEmpty) {
-        bestScore[key] = {
-          // đảm bảo kiểu số là double/int thuần
-          'bestScore': (data['bestScore'] as num?)?.toDouble() ?? 0.0,
-          'bestCorrectAnswers': (data['bestCorrectAnswers'] as num?)?.toInt() ?? 0,
-          'totalQuestions': (data['totalQuestions'] as num?)?.toInt() ?? 0,
-          'attemptNo': (data['attemptNo'] as num?)?.toInt() ?? 0,
-          'durationSeconds': (data['durationSeconds'] as num?)?.toInt() ?? 0,
-          'completedAt': data['completedAt'],
-          'passed': data['passed'] == true,
-        };
+        bestScore["$quizId-$userId"] = data;
       } else {
-        bestScore.remove(key); // chưa có điểm cao nhất
+        bestScore.remove("$quizId-$userId");
       }
     } catch (e) {
-      // ❗ Đừng hiển thị SnackBar ở đây để tránh spam khi load nhiều quiz song song
-      debugPrint('fetchBestScoreForUser($quizId) failed: $e');
-      bestScore.remove(key);
+      print("❌ Error fetching best score: $e");
+      Get.snackbar(
+        "Lỗi",
+        "Không thể tải điểm cao nhất",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     } finally {
       isBestScoreLoading.value = false;
     }
@@ -395,4 +388,84 @@ class QuizController extends GetxController {
     final userId = authController.userId.value;
     return userId > 0 ? isQuizPassed(quizId, userId) : false;
   }
+
+  // Future<void> fetchUserAverageAccuracy(int userId) async {
+  //   try {
+  //     isAccuracyLoading.value = true;
+  //     accuracyError.value = '';
+  //
+  //     final data = await quizRepository.getUserAverageAccuracy(userId);
+  //
+  //     // Xử lý dữ liệu trả về
+  //     if (data.containsKey('averageAccuracy')) {
+  //       final accuracy = data['averageAccuracy'];
+  //       if (accuracy is int) {
+  //         averageAccuracy.value = accuracy.toDouble();
+  //       } else if (accuracy is double) {
+  //         averageAccuracy.value = accuracy;
+  //       } else {
+  //         averageAccuracy.value = 0.0;
+  //       }
+  //     } else {
+  //       averageAccuracy.value = 0.0;
+  //     }
+  //
+  //     print("✅ Average accuracy loaded: ${averageAccuracy.value}%");
+  //
+  //   } catch (e) {
+  //     accuracyError.value = e.toString();
+  //     averageAccuracy.value = 0.0;
+  //     print("❌ Error fetching average accuracy: $e");
+  //
+  //     Get.snackbar(
+  //       "Lỗi",
+  //       "Không thể tải độ chính xác trung bình",
+  //       snackPosition: SnackPosition.BOTTOM,
+  //       backgroundColor: Colors.red,
+  //       colorText: Colors.white,
+  //     );
+  //   } finally {
+  //     isAccuracyLoading.value = false;
+  //   }
+  // }
+  //
+  // /// 🔹 Lấy độ chính xác trung bình (auto-detect user từ AuthController)
+  // Future<void> fetchCurrentUserAverageAccuracy() async {
+  //   final authController = Get.find<AuthController>();
+  //   final userId = authController.userId.value;
+  //
+  //   if (userId == 0) {
+  //     print("⚠️ User not logged in, cannot fetch average accuracy");
+  //     return;
+  //   }
+  //
+  //   await fetchUserAverageAccuracy(userId);
+  // }
+  //
+  // /// 🔹 Format độ chính xác thành string (ví dụ: "75.5%")
+  // String get formattedAverageAccuracy {
+  //   return '${averageAccuracy.value.toStringAsFixed(1)}%';
+  // }
+  //
+  // /// 🔹 Kiểm tra xem độ chính xác có tốt không (>= 70%)
+  // bool get isAccuracyGood {
+  //   return averageAccuracy.value >= 70.0;
+  // }
+  //
+  // /// 🔹 Kiểm tra xem độ chính xác có trung bình không (50-69%)
+  // bool get isAccuracyAverage {
+  //   return averageAccuracy.value >= 50.0 && averageAccuracy.value < 70.0;
+  // }
+  //
+  // /// 🔹 Kiểm tra xem độ chính xác có thấp không (< 50%)
+  // bool get isAccuracyLow {
+  //   return averageAccuracy.value < 50.0;
+  // }
+  //
+  // /// 🔹 Màu sắc hiển thị dựa trên độ chính xác
+  // Color get accuracyColor {
+  //   if (isAccuracyGood) return Colors.green;
+  //   if (isAccuracyAverage) return Colors.orange;
+  //   return Colors.red;
+  // }
 }
