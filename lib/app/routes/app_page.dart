@@ -21,6 +21,7 @@ import '../../screens/solve_exercises_detail.dart';
 import '../../screens/subject_detail_screen.dart';
 import '../../screens/theory_screen.dart';
 import '../../widgets/main_widgets.dart';
+import '../../widgets/root_shell.dart';
 
 class AppPages {
   static final routes = [
@@ -144,6 +145,10 @@ class AppPages {
       page: () => DashboardScreen(),
       transition: Transition.fadeIn,
       middlewares: [RoleMiddleware('USER')],
+    ),
+    GetPage(
+      name: AppRoutes.main,
+      page: () => const RootShell(), // <<—— DÙNG ROOTSHELL Ở ĐÂY
     ),
   ];
 }

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+
 import 'package:flutter_elearning_application/controllers/auth_controller.dart';
 import '../app/routes/app_routes.dart';
 import 'package:flutter_elearning_application/widgets/home_top_summary.dart';
+
 
 class HomeScreen extends StatelessWidget {
   final AuthController authController = Get.find<AuthController>();
@@ -38,10 +40,7 @@ class HomeScreen extends StatelessWidget {
             children: [
               Text(
                 "Chọn lớp học của bạn",
-                style: TextStyle(
-                  fontSize: 20.sp,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 20.h),
               Wrap(
@@ -55,10 +54,7 @@ class HomeScreen extends StatelessWidget {
                       Get.back();
                     },
                     child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 20.w,
-                        vertical: 12.h,
-                      ),
+                      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
                       decoration: BoxDecoration(
                         color: isSelected ? Colors.blueAccent : Colors.grey.shade300,
                         borderRadius: BorderRadius.circular(10.r),
@@ -116,7 +112,7 @@ class HomeScreen extends StatelessWidget {
       body: SafeArea(
         child: Obx(() {
           return SingleChildScrollView(
-            padding: EdgeInsets.all(16.w),
+            padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 16.h + 56.h),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -137,16 +133,13 @@ class HomeScreen extends StatelessWidget {
                       SizedBox(width: 10.w),
                       Expanded(
                         child: TextField(
-                          decoration: InputDecoration(
+                          decoration: const InputDecoration(
                             hintText: "Tìm kiếm bài học...",
                             border: InputBorder.none,
-                            hintStyle: TextStyle(fontSize: 14.sp),
                           ),
                           style: TextStyle(fontSize: 14.sp),
                           readOnly: true,
-                          onTap: () {
-                            Get.toNamed(AppRoutes.search);
-                          },
+                          onTap: () => Get.toNamed(AppRoutes.search),
                         ),
                       ),
                     ],
@@ -158,7 +151,7 @@ class HomeScreen extends StatelessWidget {
                 Text(
                   "Xin chào, ${authController.username.value} 👋",
                   style: TextStyle(
-                    fontSize: 24.sp, // Giảm từ 26.sp xuống 24.sp
+                    fontSize: 24.sp,
                     fontWeight: FontWeight.bold,
                     color: Colors.black,
                   ),
@@ -166,31 +159,14 @@ class HomeScreen extends StatelessWidget {
                 SizedBox(height: 6.h),
                 Text(
                   "Chào mừng bạn quay trở lại E-learning App!",
-                  style: TextStyle(fontSize: 14.sp, color: Colors.grey), // Giảm từ 16.sp xuống 14.sp
+                  style: TextStyle(fontSize: 14.sp, color: Colors.grey),
                 ),
                 SizedBox(height: 12.h),
 
-            // ===== 3 card đồng bộ từ Dashboard =====
+                // ===== 3 card tổng quan (responsive) =====
+                // HomeTopSummary đã tự responsive & không cuộn, chỉ việc gắn vào là chạy
                 const HomeTopSummary(),
 
-                SizedBox(height: 20.h),
-
-                // ===== Dashboard Card - FIXED =====
-                // LayoutBuilder(
-                //   builder: (context, constraints) {
-                //     // Xác định số cột dựa trên chiều rộng màn hình
-                //     final screenWidth = constraints.maxWidth;
-                //     final crossAxisCount = screenWidth < 300 ? 1 : 3;
-                //
-                //     if (crossAxisCount == 1) {
-                //       // Hiển thị dạng list cho màn hình rất nhỏ
-                //       return _buildDashboardList();
-                //     } else {
-                //       // Hiển thị dạng grid cho màn hình bình thường
-                //       return _buildDashboardGrid();
-                //     }
-                //   },
-                // ),
                 SizedBox(height: 20.h),
 
                 // ===== Danh sách môn học =====
@@ -198,7 +174,7 @@ class HomeScreen extends StatelessWidget {
                   Text(
                     "Lớp ${authController.selectedClass.value}",
                     style: TextStyle(
-                      fontSize: 20.sp, // Giảm từ 22.sp xuống 20.sp
+                      fontSize: 20.sp,
                       fontWeight: FontWeight.bold,
                       color: Colors.blue,
                     ),
@@ -206,6 +182,7 @@ class HomeScreen extends StatelessWidget {
                   SizedBox(height: 12.h),
                   _buildSubjectsGrid(),
                 ],
+                SizedBox(height: 8.h), // đệm thêm một chút là đẹp
               ],
             ),
           );
@@ -214,67 +191,28 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // ===== Dashboard dạng list cho màn hình nhỏ =====
+  // ===== Dashboard dạng list cho màn hình nhỏ (giữ lại nếu sau này dùng) =====
   Widget _buildDashboardList() {
     return Column(
       children: [
-        _buildDashboardCard(
-          title: "Quiz",
-          value: "12",
-          icon: Icons.quiz,
-          color: Colors.blue,
-          isListMode: true,
-        ),
+        _buildDashboardCard(title: "Quiz", value: "12", icon: Icons.quiz, color: Colors.blue, isListMode: true),
         SizedBox(height: 12.h),
-        _buildDashboardCard(
-          title: "Videos",
-          value: "8",
-          icon: Icons.play_circle_fill,
-          color: Colors.green,
-          isListMode: true,
-        ),
+        _buildDashboardCard(title: "Videos", value: "8", icon: Icons.play_circle_fill, color: Colors.green, isListMode: true),
         SizedBox(height: 12.h),
-        _buildDashboardCard(
-          title: "Điểm cao",
-          value: "95",
-          icon: Icons.star,
-          color: Colors.orange,
-          isListMode: true,
-        ),
+        _buildDashboardCard(title: "Điểm cao", value: "95", icon: Icons.star, color: Colors.orange, isListMode: true),
       ],
     );
   }
 
-  // ===== Dashboard dạng grid cho màn hình bình thường =====
+  // ===== Dashboard dạng grid cho màn hình bình thường (giữ lại nếu sau này dùng) =====
   Widget _buildDashboardGrid() {
     return Row(
       children: [
-        Expanded(
-          child: _buildDashboardCard(
-            title: "Quiz",
-            value: "12",
-            icon: Icons.quiz,
-            color: Colors.blue,
-          ),
-        ),
+        Expanded(child: _buildDashboardCard(title: "Quiz", value: "12", icon: Icons.quiz, color: Colors.blue)),
         SizedBox(width: 10.w),
-        Expanded(
-          child: _buildDashboardCard(
-            title: "Videos",
-            value: "8",
-            icon: Icons.play_circle_fill,
-            color: Colors.green,
-          ),
-        ),
+        Expanded(child: _buildDashboardCard(title: "Videos", value: "8", icon: Icons.play_circle_fill, color: Colors.green)),
         SizedBox(width: 10.w),
-        Expanded(
-          child: _buildDashboardCard(
-            title: "Điểm cao",
-            value: "95",
-            icon: Icons.star,
-            color: Colors.orange,
-          ),
-        ),
+        Expanded(child: _buildDashboardCard(title: "Điểm cao", value: "95", icon: Icons.star, color: Colors.orange)),
       ],
     );
   }
@@ -295,7 +233,7 @@ class HomeScreen extends StatelessWidget {
         return Transform.scale(
           scale: scale,
           child: Container(
-            width: isListMode ? double.infinity : null, // Full width trong list mode
+            width: isListMode ? double.infinity : null,
             padding: EdgeInsets.all(12.w),
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
@@ -311,25 +249,14 @@ class HomeScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: color, size: isListMode ? 28.sp : 32.sp), // Giảm kích thước icon
+                Icon(icon, color: color, size: isListMode ? 28.sp : 32.sp),
                 SizedBox(height: 8.h),
                 Text(
                   value,
-                  style: TextStyle(
-                    fontSize: isListMode ? 18.sp : 20.sp, // Giảm font size
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
+                  style: TextStyle(fontSize: isListMode ? 18.sp : 20.sp, fontWeight: FontWeight.bold, color: color),
                 ),
                 SizedBox(height: 4.h),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: isListMode ? 12.sp : 14.sp, // Giảm font size
-                    color: Colors.black87,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
+                Text(title, style: TextStyle(fontSize: isListMode ? 12.sp : 14.sp, color: Colors.black87), textAlign: TextAlign.center),
               ],
             ),
           ),
@@ -353,7 +280,7 @@ class HomeScreen extends StatelessWidget {
             crossAxisCount: crossAxisCount,
             mainAxisSpacing: 14.h,
             crossAxisSpacing: 14.w,
-            childAspectRatio: crossAxisCount == 1 ? 3.5 : 0.9, // Thay đổi tỷ lệ cho màn hình nhỏ
+            childAspectRatio: crossAxisCount == 1 ? 3.5 : 0.9,
           ),
           itemBuilder: (context, index) {
             final subject = authController.subjects[index];
@@ -369,10 +296,7 @@ class HomeScreen extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         final grade = int.tryParse(authController.selectedClass.value) ?? 0;
-        Get.toNamed(AppRoutes.subjectDetail, arguments: {
-          'grade': grade,
-          'subject': subject,
-        });
+        Get.toNamed(AppRoutes.subjectDetail, arguments: {'grade': grade, 'subject': subject});
       },
       child: Container(
         padding: EdgeInsets.symmetric(
@@ -392,60 +316,42 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
         child: isListMode
-            ? Row( // Layout ngang cho màn hình nhỏ
+            ? Row(
           children: [
             subjectIcons[subject] is IconData
-                ? Icon(
-              subjectIcons[subject],
-              color: subjectColors[subject],
-              size: 32.sp,
-            )
-                : Image.asset(
-              subjectIcons[subject],
-              width: 32.w,
-              height: 32.h,
-              fit: BoxFit.contain,
-            ),
+                ? Icon(subjectIcons[subject], color: subjectColors[subject], size: 32.sp)
+                : Image.asset(subjectIcons[subject], width: 32.w, height: 32.h, fit: BoxFit.contain),
             SizedBox(width: 12.w),
             Expanded(
-              child: Text(
-                subject,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: subjectColors[subject],
-                  fontSize: 14.sp,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  subject,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: subjectColors[subject],
+                    fontSize: 14.sp,
+                  ),
                 ),
               ),
             ),
             Icon(Icons.arrow_forward_ios, size: 16.w, color: Colors.grey),
           ],
         )
-            : Column( // Layout dọc cho màn hình bình thường
+            : Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             subjectIcons[subject] is IconData
-                ? Icon(
-              subjectIcons[subject],
-              color: subjectColors[subject],
-              size: 35.sp,
-            )
-                : Image.asset(
-              subjectIcons[subject],
-              width: 35.w,
-              height: 35.h,
-              fit: BoxFit.contain,
-            ),
+                ? Icon(subjectIcons[subject], color: subjectColors[subject], size: 35.sp)
+                : Image.asset(subjectIcons[subject], width: 35.w, height: 35.h, fit: BoxFit.contain),
             SizedBox(height: 8.h),
             Text(
               subject,
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: subjectColors[subject],
-                fontSize: 13.sp,
-              ),
+              style: TextStyle(fontWeight: FontWeight.bold, color: subjectColors[subject], fontSize: 13.sp),
             ),
           ],
         ),

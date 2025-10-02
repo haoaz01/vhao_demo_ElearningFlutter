@@ -22,13 +22,12 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen>
     with WidgetsBindingObserver {
-
-
   Timer? _midnightTimer;
 
   final ProgressController progressController = Get.find<ProgressController>();
   final AuthController authController = Get.find<AuthController>();
-  final QuizHistoryController quizHistoryController = Get.find<QuizHistoryController>();
+  final QuizHistoryController quizHistoryController =
+  Get.find<QuizHistoryController>();
   late final UserActivityController userActivityController;
 
   final Map<String, String> subjectIcons = const {
@@ -60,17 +59,18 @@ class _DashboardScreenState extends State<DashboardScreen>
     // KHỞI TẠO CONTROLLER TRƯỚC
     userActivityController = Get.isRegistered<UserActivityController>()
         ? Get.find<UserActivityController>()
-        : Get.put(UserActivityController(
-      repository: UserActivityRepository(client: Get.find()),
-    ),
+        : Get.put(
+      UserActivityController(
+        repository: UserActivityRepository(client: Get.find()),
+      ),
       permanent: true,
     );
 
-    // Các việc bất đồng bộ: chạy sau frame đầu, KHÔNG await trong initState
+    // Chạy sau frame đầu
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final userId = authController.userId.value;
       userActivityController.ensureAutoSessionStarted(userId);
-      _loadProgressData();              // vẫn gọi như cũ
+      _loadProgressData();
     });
 
     _scheduleMidnightRefresh();
@@ -83,11 +83,11 @@ class _DashboardScreenState extends State<DashboardScreen>
     super.dispose();
   }
 
-
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      userActivityController.ensureAutoSessionStarted(authController.userId.value);
+      userActivityController
+          .ensureAutoSessionStarted(authController.userId.value);
       _loadProgressData();
     } else if (state == AppLifecycleState.paused) {
       userActivityController.persistSessionSnapshot(); // không await
@@ -99,13 +99,12 @@ class _DashboardScreenState extends State<DashboardScreen>
     final now = DateTime.now();
     final tomorrow = DateTime(now.year, now.month, now.day + 1);
     final diff = tomorrow.difference(now);
+
     _midnightTimer = Timer(diff + const Duration(seconds: 1), () async {
       await userActivityController.persistSessionSnapshot(); // snapshot lần cuối
-      _loadProgressData();
-      _scheduleMidnightRefresh();{
-      _loadProgressData();
-      _scheduleMidnightRefresh();
-    }});
+      await _loadProgressData();
+      _scheduleMidnightRefresh(); // lên lịch lại cho ngày tiếp theo
+    });
   }
 
   Future<void> _loadProgressData() async {
@@ -127,9 +126,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         ? 0
         : int.tryParse(authController.selectedClass.value) ?? 0;
 
-    if (currentGrade == 0) {
-      return [];
-    }
+    if (currentGrade == 0) return [];
 
     final progressMap = <String, Progress>{};
     for (var progress in progressController.progressList) {
@@ -163,6 +160,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     return totalPercent / displaySubjects.length;
   }
 
+  // ====== CARD MÔN HỌC (đã responsive cho máy nhỏ) ======
   Widget _buildSubjectCard(
       String subjectName,
       String subjectCode,
@@ -170,39 +168,49 @@ class _DashboardScreenState extends State<DashboardScreen>
       int completedLessons,
       int totalLessons,
       double progressPercent,
-      bool hasProgress,
-      ) {
+      bool hasProgress, {
+        bool compact = false,
+      }) {
     final color = _getSubjectColor(subjectName);
     final iconPath = _getSubjectIcon(subjectName);
 
+    // Kích thước khi compact
+    final double buttonH   = compact ? 34.h : 40.h;
+    final EdgeInsets btnPad = EdgeInsets.symmetric(
+      horizontal: compact ? 10.w : 16.w,
+      vertical: compact ? 6.h  : 10.h,
+    );
+    final double titleFs   = compact ? 14.sp : 16.sp;
+    final double subFs     = compact ? 10.sp : 12.sp;
+    final double labelFs   = compact ? 12.sp : 14.sp;
+
+// giảm khoảng cách & chiều cao progress khi compact
+    final double vGapHeader = compact ? 10.h : 16.h;
+    final double vGapSmall  = compact ? 6.h  : 8.h;
+    final double progressH  = compact ? 6.h  : 8.h;
+
     return Container(
-      width: 280.w,
-      margin: EdgeInsets.only(right: 16.w),
+      margin: EdgeInsets.only(left: 16.w),
       child: Card(
         elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.r),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         child: Padding(
           padding: EdgeInsets.all(16.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // --- Header ---
               Row(
                 children: [
                   Container(
-                    width: 40.w,
-                    height: 40.h,
+                    width: compact ? 34.w : 40.w,
+                    height: compact ? 34.h : 40.h,
                     decoration: BoxDecoration(
                       color: color.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(10.r),
                     ),
                     child: Center(
-                      child: Image.asset(
-                        iconPath,
-                        width: 24.w,
-                        height: 24.h,
-                      ),
+                      child: Image.asset(iconPath, width: 22.w, height: 22.h),
                     ),
                   ),
                   SizedBox(width: 12.w),
@@ -215,106 +223,103 @@ class _DashboardScreenState extends State<DashboardScreen>
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 16.sp,
+                            fontSize: titleFs,
                             fontWeight: FontWeight.bold,
                             color: Colors.black87,
                           ),
                         ),
                         Text(
                           'Khối $grade',
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            color: Colors.grey[600],
-                          ),
+                          style: TextStyle(fontSize: subFs, color: Colors.grey[600]),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
                 ],
               ),
-              SizedBox(height: 16.h),
+
+              SizedBox(height: vGapHeader),
+
+              // --- Tiến độ ---
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     'Tiến độ',
                     style: TextStyle(
-                      fontSize: 14.sp,
+                      fontSize: compact ? 13.sp : 14.sp,
                       fontWeight: FontWeight.w500,
                       color: Colors.grey[700],
                     ),
                   ),
                   Text(
                     '$completedLessons/$totalLessons bài',
-                    style: TextStyle(
-                      fontSize: 12.sp,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: subFs, color: Colors.grey[600]),
                   ),
                 ],
               ),
-              SizedBox(height: 8.h),
+              SizedBox(height: vGapSmall),
               Container(
-                height: 8.h,
+                height: progressH,
                 decoration: BoxDecoration(
                   color: Colors.grey[200],
                   borderRadius: BorderRadius.circular(4.r),
                 ),
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(4.r),
-                        ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final ratio = (progressPercent.clamp(0, 100)) / 100.0;
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 500),
+                      width: constraints.maxWidth * ratio,
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(4.r),
                       ),
-                    ),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final ratio = (progressPercent.clamp(0, 100)) / 100.0;
-                        return AnimatedContainer(
-                          duration: const Duration(milliseconds: 500),
-                          width: constraints.maxWidth * ratio,
-                          decoration: BoxDecoration(
-                            color: color,
-                            borderRadius: BorderRadius.circular(4.r),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
-              SizedBox(height: 8.h),
+              SizedBox(height: vGapSmall),
               Align(
                 alignment: Alignment.centerRight,
                 child: Text(
                   '${progressPercent.toStringAsFixed(1)}%',
                   style: TextStyle(
-                    fontSize: 12.sp,
+                    fontSize: subFs,
                     fontWeight: FontWeight.bold,
                     color: color,
                   ),
                 ),
               ),
-              SizedBox(height: 16.h),
-              ElevatedButton(
-                onPressed: () => _navigateToSubject(subjectName, grade, subjectCode),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: color,
-                  foregroundColor: Colors.white,
-                  minimumSize: Size(double.infinity, 40.h),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.r),
+
+              // Đệm ít thôi ở máy nhỏ
+              SizedBox(height: compact ? 8.h : 12.h),
+
+              // --- Nút: cố định chiều cao để không “chòi” ra ngoài ---
+              SizedBox(
+                height: buttonH,
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => _navigateToSubject(subjectName, grade, subjectCode),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: color,
+                    foregroundColor: Colors.white,
+                    padding: btnPad,
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
                   ),
-                  elevation: 2,
-                ),
-                child: Text(
-                  hasProgress ? 'Tiếp tục học' : 'Bắt đầu học',
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w500,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      hasProgress ? 'Tiếp tục học' : 'Bắt đầu học',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: labelFs, fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ),
               ),
@@ -366,11 +371,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.class_outlined,
-              size: 80.sp,
-              color: Colors.grey[300],
-            ),
+            Icon(Icons.class_outlined, size: 80.sp, color: Colors.grey[300]),
             SizedBox(height: 24.h),
             Text(
               'Chưa chọn khối lớp',
@@ -384,27 +385,18 @@ class _DashboardScreenState extends State<DashboardScreen>
             SizedBox(height: 12.h),
             Text(
               'Vui lòng chọn khối lớp trong phần Profile để xem tiến trình học tập.',
-              style: TextStyle(
-                fontSize: 14.sp,
-                color: Colors.grey[500],
-              ),
+              style: TextStyle(fontSize: 14.sp, color: Colors.grey[500]),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 32.h),
             ElevatedButton(
-              onPressed: () {
-                Get.toNamed('/profile');
-              },
+              onPressed: () => Get.toNamed('/profile'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
                 foregroundColor: Colors.white,
-                padding:
-                EdgeInsets.symmetric(horizontal: 32.w, vertical: 12.h),
+                padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 12.h),
               ),
-              child: Text(
-                'Đến Profile',
-                style: TextStyle(fontSize: 14.sp),
-              ),
+              child: Text('Đến Profile', style: TextStyle(fontSize: 14.sp)),
             ),
           ],
         ),
@@ -424,175 +416,189 @@ class _DashboardScreenState extends State<DashboardScreen>
       appBar: AppBar(
         title: Text(
           'Dashboard',
-          style: TextStyle(
-            fontSize: 18.sp,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.white,
         elevation: 1,
         actions: [
           IconButton(
             icon: Icon(Icons.refresh, size: 22.sp),
-            onPressed: () async {
-              await _loadProgressData();
-            },
+            onPressed: () async => _loadProgressData(),
             tooltip: 'Làm mới',
           ),
         ],
       ),
-      body: Obx(() {
-        if (progressController.isLoading.value) {
-          return _buildLoadingState();
-        }
+      body: MediaQuery(
+        // chặn text-scale quá lớn làm bể layout
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(
+            MediaQuery.of(context).textScaler.scale(1.0).clamp(0.85, 1.10),
+          ),
+        ),
+        child: Obx(() {
+          if (progressController.isLoading.value) {
+            return _buildLoadingState();
+          }
+          if (authController.selectedClass.value.isEmpty) {
+            return _buildNoClassSelectedState();
+          }
 
-        if (authController.selectedClass.value.isEmpty) {
-          return _buildNoClassSelectedState();
-        }
-
-        return Padding(
-          padding: EdgeInsets.all(16.w),
-          child: ListView(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Xin chào, ${authController.username.value}!',
-                    style: TextStyle(
-                      fontSize: 20.sp,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+          return Padding(
+            padding: EdgeInsets.all(16.w),
+            child: ListView(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Xin chào, ${authController.username.value}!',
+                      style: TextStyle(
+                        fontSize: 20.sp,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 4.h),
-                  Text(
-                    'Tiến trình học tập của bạn ($currentGrade)',
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      color: Colors.grey[600],
+                    SizedBox(height: 4.h),
+                    Text(
+                      'Tiến trình học tập của bạn ($currentGrade)',
+                      style: TextStyle(fontSize: 14.sp, color: Colors.grey[600]),
                     ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 24.h),
-              GestureDetector(
-                onTap: _navigateToStreakScreen,
-                child: const _StreakCardNew(),
-              ),
-              SizedBox(height: 16.h),
-              const _QuizHistoryFromApi(),
-              SizedBox(height: 16.h),
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.r),
+                  ],
                 ),
-                child: Padding(
-                  padding: EdgeInsets.all(16.w),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 48.w,
-                        height: 48.h,
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(24.r),
+                SizedBox(height: 24.h),
+
+                // Streak
+                GestureDetector(
+                  onTap: _navigateToStreakScreen,
+                  child: const _StreakCardNew(),
+                ),
+                SizedBox(height: 16.h),
+
+                // Quiz history
+                const _QuizHistoryFromApi(),
+                SizedBox(height: 16.h),
+
+                // Tổng tiến độ
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.r)),
+                  child: Padding(
+                    padding: EdgeInsets.all(16.w),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 48.w,
+                          height: 48.h,
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(24.r),
+                          ),
+                          child: const Icon(Icons.auto_graph_rounded,
+                              size: 24, color: Colors.blue),
                         ),
-                        child: const Icon(
-                          Icons.auto_graph_rounded,
-                          size: 24,
-                          color: Colors.blue,
-                        ),
-                      ),
-                      SizedBox(width: 12.w),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Tổng tiến độ',
-                              style: TextStyle(
-                                fontSize: 14.sp,
-                                color: Colors.grey[600],
+                        SizedBox(width: 12.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Tổng tiến độ',
+                                  style: TextStyle(
+                                      fontSize: 14.sp, color: Colors.grey[600])),
+                              SizedBox(height: 4.h),
+                              const Text(
+                                // giữ font tĩnh cho con số
+                                '',
+                                style: TextStyle(fontSize: 0),
                               ),
-                            ),
-                            SizedBox(height: 4.h),
-                            Text(
-                              '${overallProgress.toStringAsFixed(1)}%',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue,
+                              Text(
+                                '${overallProgress.toStringAsFixed(1)}%',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Chip(
-                        label: Text(
-                          '${displaySubjects.length} môn',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                            ],
                           ),
                         ),
-                        backgroundColor: Colors.blue.withOpacity(0.1),
-                        side: BorderSide.none,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              SizedBox(height: 24.h),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Môn học ($currentGrade)',
-                    style: TextStyle(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.bold,
+                        Chip(
+                          label: Text(
+                            '${displaySubjects.length} môn',
+                            style: const TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w500),
+                          ),
+                          backgroundColor: Colors.blue.withOpacity(0.1),
+                          side: BorderSide.none,
+                        ),
+                      ],
                     ),
                   ),
-                  Text(
-                    '${displaySubjects.length} môn',
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 16.h),
-              SizedBox(
-                height: 240.h,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: displaySubjects.length,
-                  itemBuilder: (context, index) {
-                    final subject = displaySubjects[index];
-                    return _buildSubjectCard(
-                      subject['name'] as String,
-                      subject['code'] as String,
-                      subject['grade'] as int,
-                      subject['completedLessons'] as int,
-                      subject['totalLessons'] as int,
-                      subject['progressPercent'] as double,
-                      subject['hasProgress'] as bool,
-                    );
-                  },
                 ),
-              ),
-            ],
-          ),
-        );
-      }),
+                SizedBox(height: 24.h),
+
+                // Header list môn
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Môn học ($currentGrade)',
+                      style:
+                      TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      '${displaySubjects.length} môn',
+                      style: TextStyle(fontSize: 14.sp, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16.h),
+
+                // List card môn học (responsive)
+                SizedBox(
+                  height: (MediaQuery.of(context).size.height * 0.30)
+                      .clamp(220.0, 280.0), // trước là 200–260
+                  child: LayoutBuilder(
+                    builder: (ctx, cst) {
+                      final w = cst.maxWidth;
+                      final bool compact = w < 370;   // ⬅ nới điều kiện compact (máy hẹp hơn dễ vào chế độ gọn)
+                      final double cardW = (w * 0.72).clamp(200.0, 320.0);
+
+                      return ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: displaySubjects.length,
+                        padding: EdgeInsets.only(right: 16.w),
+                        itemBuilder: (context, index) {
+                          final subject = displaySubjects[index];
+                          return SizedBox(
+                            width: cardW,
+                            child: _buildSubjectCard(
+                              subject['name'] as String,
+                              subject['code'] as String,
+                              subject['grade'] as int,
+                              subject['completedLessons'] as int,
+                              subject['totalLessons'] as int,
+                              subject['progressPercent'] as double,
+                              subject['hasProgress'] as bool,
+                              compact: compact,        // ⬅ truyền cờ compact
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ),
     );
   }
 }
 
-// CARD STREAK MỚI - SỬ DỤNG USER ACTIVITY CONTROLLER CẬP NHẬT
+// =================== WIDGETS PHỤ ===================
+
 class _StreakCardNew extends StatelessWidget {
   const _StreakCardNew();
 
@@ -617,49 +623,48 @@ class _StreakCardNew extends StatelessWidget {
             if (controller.error != null) {
               return Column(
                 children: [
-                  Icon(Icons.error_outline, size: 32, color: Colors.red),
-                  SizedBox(height: 8),
-                  Text(
-                    'Lỗi tải dữ liệu streak',
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                  SizedBox(height: 8),
+                  const Icon(Icons.error_outline, size: 32, color: Colors.red),
+                  const SizedBox(height: 8),
+                  Text('Lỗi tải dữ liệu streak',
+                      style: TextStyle(color: Colors.grey[600])),
+                  const SizedBox(height: 8),
                   ElevatedButton(
-                    onPressed: () => controller.fetchStreakInfo(authController.userId.value),
-                    child: Text('Thử lại'),
+                    onPressed: () => controller
+                        .fetchStreakInfo(authController.userId.value),
+                    child: const Text('Thử lại'),
                   ),
                 ],
               );
             }
 
-            final streakInfo = controller.streakInfo;
             final todayMinutes = controller.todayTotalMinutes;
             final currentStreak = controller.currentStreak;
             final todayStudied = controller.isTodayTargetAchieved;
             final remainingMinutes = controller.remainingMinutes;
-            final progress = controller.todayProgressSeconds; // vẽ theo GIÂY
+            final progress = controller.todayProgressSeconds;
+
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header với icon lửa và tiêu đề
                 Row(
                   children: [
-                    Icon(
-                      Icons.local_fire_department,
-                      color: currentStreak > 0 ? Colors.orange : Colors.grey,
-                    ),
-                    SizedBox(width: 8),
+                    Icon(Icons.local_fire_department,
+                        color:
+                        currentStreak > 0 ? Colors.orange : Colors.grey),
+                    const SizedBox(width: 8),
                     Text(
                       'Chuỗi ngày học liên tiếp',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: currentStreak > 0 ? Colors.black87 : Colors.grey[600],
+                        color: currentStreak > 0
+                            ? Colors.black87
+                            : Colors.grey[600],
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
 
                 // Tiến trình hôm nay
                 Column(
@@ -670,31 +675,24 @@ class _StreakCardNew extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Hôm nay',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                              SizedBox(height: 4),
+                              Text('Hôm nay',
+                                  style: TextStyle(
+                                      fontSize: 12, color: Colors.grey[600])),
+                              const SizedBox(height: 4),
                               Row(
                                 children: [
                                   Text(
                                     '$todayMinutes',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.blue,
                                     ),
                                   ),
-                                  Text(
-                                    '/15 phút',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
+                                  Text('/15 phút',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600])),
                                 ],
                               ),
                             ],
@@ -707,11 +705,10 @@ class _StreakCardNew extends StatelessWidget {
                                 : todayMinutes > 0
                                 ? 'Đang học'
                                 : 'Chưa học',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold),
                           ),
                           backgroundColor: todayStudied
                               ? Colors.green
@@ -722,7 +719,7 @@ class _StreakCardNew extends StatelessWidget {
                         ),
                       ],
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     LinearProgressIndicator(
                       value: progress,
                       backgroundColor: Colors.grey[200],
@@ -730,42 +727,35 @@ class _StreakCardNew extends StatelessWidget {
                       minHeight: 6,
                       borderRadius: BorderRadius.circular(3),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          '$todayMinutes phút',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        Text(
-                          '$remainingMinutes phút còn lại',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
+                        Text('$todayMinutes phút',
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey[600])),
+                        Text('$remainingMinutes phút còn lại',
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey[600])),
                       ],
                     ),
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
                   ],
                 ),
 
-                // 3 số liệu chính
+                // 3 số liệu
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _StreakStatChipNew(
                       value: '$currentStreak',
                       label: 'Ngày liên tiếp',
-                      color: currentStreak > 0 ? Colors.orange : Colors.grey,
+                      color:
+                      currentStreak > 0 ? Colors.orange : Colors.grey,
                     ),
                     _StreakStatChipNew(
                       value: controller.streakCalendar?.calendarDays
-                          .where((day) => day.studied)
+                          .where((d) => d.studied)
                           .length
                           .toString() ??
                           '0',
@@ -773,16 +763,15 @@ class _StreakCardNew extends StatelessWidget {
                       color: Colors.blue,
                     ),
                     _StreakStatChipNew(
-                      value: '$currentStreak', // Tạm thời dùng current streak làm best streak
+                      value: '$currentStreak',
                       label: 'Kỷ lục',
                       color: Colors.purple,
                     ),
                   ],
                 ),
 
-                // Thông tin bổ sung
                 if (controller.streakCalendar?.streakEndDate != null) ...[
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Center(
                     child: Text(
                       'Hoạt động gần nhất: ${DateFormat('dd/MM/yyyy').format(controller.streakCalendar!.streakEndDate!)}',
@@ -795,9 +784,8 @@ class _StreakCardNew extends StatelessWidget {
                   ),
                 ],
 
-                // Hiển thị thời gian phiên học hiện tại
                 if (controller.isSessionActive) ...[
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
@@ -808,7 +796,7 @@ class _StreakCardNew extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.timer, size: 16, color: Colors.green[700]),
-                        SizedBox(width: 4),
+                        const SizedBox(width: 4),
                         Text(
                           'Đang học: ${controller.currentSessionMinutes} phút',
                           style: TextStyle(
@@ -830,7 +818,6 @@ class _StreakCardNew extends StatelessWidget {
   }
 }
 
-// CHIP THỐNG KÊ STREAK MỚI (CHỈ GIỮ LẠI MỘT ĐỊNH NGHĨA)
 class _StreakStatChipNew extends StatelessWidget {
   final String value;
   final String label;
@@ -868,10 +855,7 @@ class _StreakStatChipNew extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           label,
-          style: TextStyle(
-            fontSize: 10,
-            color: Colors.grey[600],
-          ),
+          style: TextStyle(fontSize: 10, color: Colors.grey[600]),
           textAlign: TextAlign.center,
         ),
       ],
@@ -879,7 +863,6 @@ class _StreakStatChipNew extends StatelessWidget {
   }
 }
 
-// GIỮ NGUYÊN PHẦN QUIZ HISTORY
 class _QuizHistoryFromApi extends StatelessWidget {
   const _QuizHistoryFromApi({super.key});
 
@@ -910,7 +893,9 @@ class _QuizHistoryFromApi extends StatelessWidget {
       final active = list.where((e) => e.totalSum > 0).toList();
       final avg = active.isEmpty
           ? 0.0
-          : active.map((e) => e.percentAccuracy).reduce((a, b) => a + b) /
+          : active
+          .map((e) => e.percentAccuracy)
+          .reduce((a, b) => a + b) /
           active.length;
 
       final days = list.map((e) => e.day).toList();
@@ -918,7 +903,8 @@ class _QuizHistoryFromApi extends StatelessWidget {
 
       return Card(
         elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -931,7 +917,8 @@ class _QuizHistoryFromApi extends StatelessWidget {
               const SizedBox(height: 10),
               Text(
                 'Điểm trung bình: ${avg.toStringAsFixed(0)}%',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                style:
+                const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 10),
               SizedBox(
@@ -954,7 +941,8 @@ class _QuizHistoryFromApi extends StatelessWidget {
                       enabled: true,
                       touchTooltipData: BarTouchTooltipData(
                         tooltipBorderRadius: BorderRadius.circular(6),
-                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        getTooltipItem:
+                            (group, groupIndex, rod, rodIndex) {
                           final pct =
                           rod.toY.clamp(0, 100).toStringAsFixed(0);
                           return BarTooltipItem(
@@ -988,16 +976,17 @@ class _QuizHistoryFromApi extends StatelessWidget {
                             }
                             return Padding(
                               padding: const EdgeInsets.only(top: 4.0),
-                              child:
-                              Text(DateFormat('dd/MM').format(days[idx])),
+                              child: Text(
+                                DateFormat('dd/MM').format(days[idx]),
+                              ),
                             );
                           },
                         ),
                       ),
-                      rightTitles:
-                      const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      topTitles:
-                      const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
+                      topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
                     ),
                     gridData: FlGridData(
                       show: true,
