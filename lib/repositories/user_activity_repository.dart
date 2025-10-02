@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../repositories/progress_repository.dart';
 import '../model/accumulate_session_response_model.dart';
 import '../model/check_studied_response_model.dart';
 import '../model/streak_info_model.dart';
@@ -9,7 +10,8 @@ import '../model/user_streak_response_model.dart';
 
 class UserActivityRepository {
   // static const String baseUrl = 'http://192.168.1.50:8080/api/user-activity';
-  static const String baseUrl = 'http://192.168.1.50:8080/api/user-activity';
+  // static const String baseUrl = 'http://192.168.1.50:8080/api/user-activity';
+  static String get baseUrl => '${ProgressRepository.host}/api/user-activity';
 
 
   final http.Client client;
@@ -21,10 +23,13 @@ class UserActivityRepository {
     try {
       final url = Uri.parse('$baseUrl'); // POST chuẩn, params trong body
       print('📝 POST recordActivity: $url');
+      final headers = ProgressRepository.authHeaders(await ProgressRepository.getToken());
+            headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            headers['Accept'] = 'application/json';
 
       final response = await client.post(
         url,
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        headers: headers,
         body: {
           'userId': userId.toString(),
           'activityDate': _formatDate(activityDate),
@@ -70,11 +75,14 @@ class UserActivityRepository {
         'activityDate': _formatDate(activityDate),
         'sessionMinutes': sessionMinutes.toString(),
       };
+      final headers = ProgressRepository.authHeaders(await ProgressRepository.getToken());
+            headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            headers['Accept'] = 'application/json';
 
       final response = await client.post(
         url,
         body: body,
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        headers: headers,
       ).timeout(const Duration(seconds: 15));
 
       print('📡 Response status: ${response.statusCode}');
@@ -101,13 +109,12 @@ class UserActivityRepository {
     try {
       final url = Uri.parse('$baseUrl/streak/${userId.toString()}');
       print('🔄 GET getStreakInfo: $url');
+      final headers = ProgressRepository.authHeaders(await ProgressRepository.getToken());
+      headers['Accept'] = 'application/json';
 
       final response = await client.get(
         url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: headers,
       ).timeout(const Duration(seconds: 15));
 
       print('📡 Response status: ${response.statusCode}');
@@ -137,13 +144,10 @@ class UserActivityRepository {
       final url = Uri.parse('$baseUrl/streak-calendar/${userId.toString()}?months=$months');
       print('🔄 GET getUserStreakAndCalendar: $url');
 
-      final response = await client.get(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 15));
+      final headers = ProgressRepository.authHeaders(await ProgressRepository.getToken());
+      headers['Accept'] = 'application/json';
+      headers['Content-Type'] = 'application/json';
+      final response = await client.get(url, headers: headers);
 
       print('📡 Response status: ${response.statusCode}');
       print('📡 Response body: ${response.body}');
@@ -329,10 +333,9 @@ class UserActivityRepository {
       final url = Uri.parse('$baseUrl/streak-calendar/$userId?months=1');
       print('🔍 Testing connection to: $url');
 
-      final response = await client.get(
-        url,
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(const Duration(seconds: 10));
+      final headers = ProgressRepository.authHeaders(await ProgressRepository.getToken());
+      headers['Content-Type'] = 'application/json';
+      final response = await client.get(url, headers: headers);
 
       final result = {
         'connected': response.statusCode == 200,

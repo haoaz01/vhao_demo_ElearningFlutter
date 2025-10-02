@@ -15,9 +15,15 @@ import '../model/quiz_progress_model.dart';
 class QuizRepository {
   final String baseUrl = "${ProgressRepository.host}/api/quizzes";
   // final String baseUrl = "http://192.168.1.118:8080/api/quizzes";
+  Future<Map<String,String>> _authJsonHeaders() async {
+    final token = await ProgressRepository.getToken();
+    final h = ProgressRepository.authHeaders(token);
+    h['Content-Type'] = 'application/json';
+    return h;
+    }
 
   Future<List<Quiz>> getAllQuizzes() async {
-    final response = await http.get(Uri.parse(baseUrl));
+    final response = await http.get(Uri.parse(baseUrl), headers: await _authJsonHeaders());
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       return data.map((json) => Quiz.fromJson(json)).toList();
@@ -27,7 +33,7 @@ class QuizRepository {
   }
 
   Future<Quiz> getQuizById(int id) async {
-    final response = await http.get(Uri.parse("$baseUrl/$id"));
+    final response = await http.get(Uri.parse("$baseUrl/$id"), headers: await _authJsonHeaders());
     if (response.statusCode == 200) {
       return Quiz.fromJson(jsonDecode(response.body));
     } else {
@@ -36,7 +42,7 @@ class QuizRepository {
   }
 
   Future<Quiz> getQuizByCode(String code) async {
-    final response = await http.get(Uri.parse("$baseUrl/code/$code"));
+    final response = await http.get(Uri.parse("$baseUrl/code/$code"), headers: await _authJsonHeaders());
     if (response.statusCode == 200) {
       return Quiz.fromJson(jsonDecode(response.body));
     } else {
@@ -51,8 +57,7 @@ class QuizRepository {
     };
 
     final uri = Uri.parse("$baseUrl/filter").replace(queryParameters: queryParams);
-    final response = await http.get(uri);
-
+    final response = await http.get(uri, headers: await _authJsonHeaders());
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       return data.map((json) => Quiz.fromJson(json)).toList();
@@ -69,8 +74,7 @@ class QuizRepository {
     };
 
     final uri = Uri.parse("$baseUrl/filter").replace(queryParameters: queryParams);
-    final response = await http.get(uri);
-
+    final response = await http.get(uri, headers: await _authJsonHeaders());
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       return data.map((json) => Quiz.fromJson(json)).toList();
@@ -165,7 +169,7 @@ class QuizRepository {
   }
 
   Future<Map<String, dynamic>> getQuizStatistics(int quizId) async {
-    final response = await http.get(Uri.parse("$baseUrl/$quizId/statistics"));
+    final response = await http.get(Uri.parse("$baseUrl/$quizId/statistics"), headers: await _authJsonHeaders());
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
@@ -198,8 +202,7 @@ class QuizRepository {
   /// Lấy danh sách subject theo grade
   Future<List<Map<String, dynamic>>> getSubjectsByGrade(int gradeId) async {
     final uri = Uri.parse("$baseUrl/grades/$gradeId/subjects");
-    final response = await http.get(uri);
-
+    final response = await http.get(uri, headers: await _authJsonHeaders());
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       return data.map((e) => e as Map<String, dynamic>).toList();
