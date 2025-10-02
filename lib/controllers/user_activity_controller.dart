@@ -137,16 +137,21 @@ class UserActivityController extends GetxController {
       print('❌ fetchTodayInfo error: $e');
     }
   }
-  Future<void> resetSessionForNewUser() async {
-
+  Future<void> resetSessionForNewUser({required int userId}) async {
     _sessionStartTime = null;
     _sessionAccruedMinutes = 0;
     _bufferedSeconds = 0;
     await _store.clear();
+
     _todayInfo = null;
     _streakInfo = null;
     _streakCalendar = null;
     update();
+
+    // 👇 nạp lại liền cho UI không bị 0
+    await refreshData(userId);                 // fetchStreakInfo + fetchTodayInfo
+    await fetchStreakCalendar(userId, months: 1);
+    await ensureAutoSessionStarted(userId);    // khởi động session/timers
   }
   // ======= Session management =======
   /// Cộng dồn thời gian học (thay thế recordActivity)

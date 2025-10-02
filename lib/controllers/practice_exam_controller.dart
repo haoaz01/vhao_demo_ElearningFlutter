@@ -14,7 +14,7 @@ class PracticeExamController extends GetxController {
 
     try {
       String formattedSubject = _convertSubjectToApiFormat(subject);
-      String url = 'http://192.168.1.219:8080/api/pdf/list?subject=$formattedSubject&grade=$grade';
+      String url = 'http://192.168.1.50:8080/api/pdf/list?subject=$formattedSubject&grade=$grade';
 
       if (examType != null) {
         url += '&examType=$examType';

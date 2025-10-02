@@ -74,7 +74,7 @@ class TheoryController extends GetxController {
     }
 
     try {
-      final result = await InternetAddress.lookup('192.168.1.219');
+      final result = await InternetAddress.lookup('192.168.1.50');
       if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
         return true;
       }

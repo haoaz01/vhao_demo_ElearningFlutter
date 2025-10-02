@@ -52,7 +52,7 @@ class AuthFlowController extends GetxController {
     if (uid <= 0) return;
 
     // XÓA trạng thái local của session & streak cho user vừa vào
-    await _activity.resetSessionForNewUser();
+    await _activity.resetSessionForNewUser(userId: uid);
 
     // Nạp dữ liệu 0 từ server (nếu server chưa có record sẽ trả 0)
     await _activity.refreshData(uid);

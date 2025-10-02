@@ -117,7 +117,12 @@ class _DashboardScreenState extends State<DashboardScreen>
   Future<void> _loadProgressData() async {
     await userActivityController.fetchStreakInfo(authController.userId.value);
     await userActivityController.fetchTodayInfo(authController.userId.value);
+    await userActivityController.fetchStreakCalendar(  // 👈 THÊM DÒNG NÀY
+      authController.userId.value,
+      months: 1,
+    );
     await quizHistoryController.loadDailyStats(days: 7);
+
   }
 
   Future<void> _fetchAvgFromDb() async {
@@ -659,6 +664,7 @@ class _StreakCardNew extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authController = Get.find<AuthController>();
+    final uid = authController.userId.value;
 
     return Card(
       elevation: 2,
@@ -667,6 +673,16 @@ class _StreakCardNew extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: GetBuilder<UserActivityController>(
           builder: (controller) {
+            // ⚡️ Di chuyển logic check vào đây
+            if (controller.streakCalendar == null &&
+                !controller.isLoadingCalendar) {
+              controller.fetchStreakCalendar(uid, months: 1);
+              return const SizedBox(
+                height: 80,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+
             if (controller.isLoading && controller.streakInfo == null) {
               return const SizedBox(
                 height: 80,
@@ -691,6 +707,7 @@ class _StreakCardNew extends StatelessWidget {
               );
             }
 
+            // Dữ liệu hiển thị
             final todayMinutes = controller.todayTotalMinutes;
             final currentStreak = controller.currentStreak;
             final todayStudied = controller.isTodayTargetAchieved;
@@ -804,8 +821,7 @@ class _StreakCardNew extends StatelessWidget {
                     _StreakStatChipNew(
                       value: '$currentStreak',
                       label: 'Ngày liên tiếp',
-                      color:
-                      currentStreak > 0 ? Colors.orange : Colors.grey,
+                      color: currentStreak > 0 ? Colors.orange : Colors.grey,
                     ),
                     _StreakStatChipNew(
                       value: controller.streakCalendar?.calendarDays
@@ -837,32 +853,6 @@ class _StreakCardNew extends StatelessWidget {
                     ),
                   ),
                 ],
-
-                // if (controller.isSessionActive) ...[
-                //   const SizedBox(height: 8),
-                //   Container(
-                //     padding: const EdgeInsets.all(8),
-                //     decoration: BoxDecoration(
-                //       color: Colors.green[50],
-                //       borderRadius: BorderRadius.circular(8),
-                //     ),
-                //     child: Row(
-                //       mainAxisAlignment: MainAxisAlignment.center,
-                //       children: [
-                //         Icon(Icons.timer, size: 16, color: Colors.green[700]),
-                //         const SizedBox(width: 4),
-                //         Text(
-                //           'Đang học: ${controller.currentSessionMinutes} phút',
-                //           style: TextStyle(
-                //             fontSize: 12,
-                //             color: Colors.green[700],
-                //             fontWeight: FontWeight.bold,
-                //           ),
-                //         ),
-                //       ],
-                //     ),
-                //   ),
-                // ],
               ],
             );
           },
@@ -871,7 +861,6 @@ class _StreakCardNew extends StatelessWidget {
     );
   }
 }
-
 class _StreakStatChipNew extends StatelessWidget {
   final String value;
   final String label;

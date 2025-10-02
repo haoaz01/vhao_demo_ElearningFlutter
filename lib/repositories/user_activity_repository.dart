@@ -8,8 +8,8 @@ import '../model/user_activity_dto_model.dart';
 import '../model/user_streak_response_model.dart';
 
 class UserActivityRepository {
-  // static const String baseUrl = 'http://192.168.1.219:8080/api/user-activity';
-  static const String baseUrl = 'http://192.168.1.219:8080/api/user-activity';
+  // static const String baseUrl = 'http://192.168.1.50:8080/api/user-activity';
+  static const String baseUrl = 'http://192.168.1.50:8080/api/user-activity';
 
 
   final http.Client client;

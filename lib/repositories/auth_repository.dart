@@ -5,7 +5,7 @@ import 'package:get/get.dart';
 import '../repositories/progress_repository.dart';
 
 class AuthRepository {
-  // static const String baseUrl = "http://192.168.1.219:8080/api/auth";
+  // static const String baseUrl = "http://192.168.1.50:8080/api/auth";
   static String get baseUrl => ProgressRepository.authBase;
 
   // Headers chung cho các request

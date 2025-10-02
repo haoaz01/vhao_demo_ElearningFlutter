@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_elearning_application/controllers/user_activity_controller.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -127,6 +128,10 @@ class AuthController extends GetxController {
         username.value = userData['username'] ?? '';
         email.value = emailController.text.trim();
         role.value = 'USER';
+
+        // ✅ Reset session cho user mới
+        final userActivityController = Get.find<UserActivityController>();
+        await userActivityController.resetSessionForNewUser(userId: userId.value);
       }
 
       Get.snackbar("Thành công", "Đăng ký thành công!",
@@ -173,6 +178,9 @@ class AuthController extends GetxController {
       authToken.value = response['token'] ?? '';
       userId.value = response['userId'] ?? 0;
       role.value = response['role'] ?? 'USER';
+
+      final userActivityController = Get.find<UserActivityController>();
+      await userActivityController.resetSessionForNewUser(userId: userId.value);
 
       Get.snackbar("Thành công", "Đăng nhập thành công!",
           snackPosition: SnackPosition.BOTTOM,
