@@ -154,6 +154,14 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
+  Future<void> _testApiConnection() async {
+    final auth = Get.find<AuthController>();
+    final repo = UserActivityRepository(client: http.Client());
+    final result = await repo.testConnectionDetailed(userId: auth.userId.value);
+
+    debugPrint("🔍 API test result: $result");
+  }
+
   Color _getSubjectColor(String subjectName) {
     return subjectColors[subjectName] ?? Colors.grey;
   }

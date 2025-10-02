@@ -78,7 +78,7 @@ class UserActivityController extends GetxController {
     update();
 
     try {
-      final conn = await repository.testConnectionDetailed();
+      final conn = await repository.testConnectionDetailed(userId: userId); // 👈 thêm userId
       if (conn['connected'] != true) {
         _error = 'Không thể kết nối: ${conn['error'] ?? conn['message']}';
         _streakInfo = null;
@@ -90,7 +90,6 @@ class UserActivityController extends GetxController {
         _error = 'Dữ liệu streak rỗng từ server';
       }
     } catch (e, st) {
-      // ignore: avoid_print
       print('❌ fetchStreakInfo error: $e\n$st');
       _error = 'Lỗi khi lấy thông tin streak: $e';
       _streakInfo = null;
@@ -106,7 +105,7 @@ class UserActivityController extends GetxController {
     update();
 
     try {
-      final conn = await repository.testConnectionDetailed();
+      final conn = await repository.testConnectionDetailed(userId: userId); // 👈 thêm userId
       if (conn['connected'] != true) {
         _error = 'Không thể kết nối: ${conn['error'] ?? conn['message']}';
         _streakCalendar = null;
@@ -120,7 +119,6 @@ class UserActivityController extends GetxController {
         _error = 'Dữ liệu calendar rỗng từ server';
       }
     } catch (e, st) {
-      // ignore: avoid_print
       print('❌ fetchStreakCalendar error: $e\n$st');
       _error = 'Lỗi khi lấy dữ liệu lịch: $e';
       _streakCalendar = null;
@@ -140,6 +138,7 @@ class UserActivityController extends GetxController {
     }
   }
   Future<void> resetSessionForNewUser() async {
+
     _sessionStartTime = null;
     _sessionAccruedMinutes = 0;
     _bufferedSeconds = 0;
@@ -383,9 +382,7 @@ class UserActivityController extends GetxController {
     // (local bufferedSeconds chỉ để hiển thị progress mượt, không cộng vào con số phút này)
   }
 
-  int get currentStreak {
-    return _streakInfo?.currentStreak ?? _streakCalendar?.currentStreak ?? 0;
-  }
+  int get currentStreak => _streakInfo?.currentStreak ?? 0;
 
   void _showAchievementNotification() {
     Get.snackbar(
@@ -402,9 +399,9 @@ class UserActivityController extends GetxController {
     update();
   }
 
-  Future<void> checkConnection() async {
+  Future<void> checkConnection(int userId) async {
     try {
-      final result = await repository.testConnectionDetailed();
+      final result = await repository.testConnectionDetailed(userId: userId); // 👈
       _isConnected = result['connected'] == true;
       update();
     } catch (_) {

@@ -324,9 +324,9 @@ class UserActivityRepository {
 
 
   // THÊM PHƯƠNG THỨC KIỂM TRA KẾT NỐI CHI TIẾT
-  Future<Map<String, dynamic>> testConnectionDetailed() async {
+  Future<Map<String, dynamic>> testConnectionDetailed({required int userId}) async {
     try {
-      final url = Uri.parse('$baseUrl/streak-calendar/1?months=1'); // Test đúng API mà Streak screen dùng
+      final url = Uri.parse('$baseUrl/streak-calendar/$userId?months=1');
       print('🔍 Testing connection to: $url');
 
       final response = await client.get(
@@ -345,10 +345,7 @@ class UserActivityRepository {
       return result;
     } catch (e) {
       print('❌ Connection test failed: $e');
-      return {
-        'connected': false,
-        'error': e.toString(),
-      };
+      return {'connected': false, 'error': e.toString()};
     }
   }
 
