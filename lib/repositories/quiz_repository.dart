@@ -1,15 +1,16 @@
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_elearning_application/model/daily_quiz_stat_model.dart';
 import 'package:flutter_elearning_application/repositories/progress_repository.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../model/quiz_history_model.dart';
 import '../model/quiz_model.dart';
 import '../model/question_model.dart';
 import '../model/choice_model.dart';
 import '../model/quiz_result_model.dart';
 import '../model/quiz_progress_model.dart';
-
 
 class QuizRepository {
   final String baseUrl = "${ProgressRepository.host}/api/quizzes";
@@ -49,18 +50,14 @@ class QuizRepository {
       "subjectId": subjectId.toString(),
     };
 
-    try {
-      final uri = Uri.parse("$baseUrl/filter").replace(queryParameters: queryParams);
-      final response = await http.get(uri);
+    final uri = Uri.parse("$baseUrl/filter").replace(queryParameters: queryParams);
+    final response = await http.get(uri);
 
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => Quiz.fromJson(json)).toList();
-      } else {
-        throw Exception("Failed to filter quizzes by subject and grade. Status: ${response.statusCode}");
-      }
-    } catch (e) {
-      rethrow;
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => Quiz.fromJson(json)).toList();
+    } else {
+      throw Exception("Failed to filter quizzes by subject and grade. Status: ${response.statusCode}");
     }
   }
 
@@ -96,14 +93,9 @@ class QuizRepository {
       uri,
       headers: {
         "Content-Type": "application/json",
-        "Authorization": "Bearer $authToken", // 🔥 Gắn token
+        "Authorization": "Bearer $authToken",
       },
     );
-
-    print("📤 Request: $uri");
-    print("🔑 Token exists: ${authToken.isNotEmpty}");
-    print("📥 Status: ${response.statusCode}");
-    print("📥 Body: ${response.body}");
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
@@ -116,7 +108,6 @@ class QuizRepository {
       );
     }
   }
-
 
   Future<List<Choice>> getQuestionChoices(int questionId) async {
     final response = await http.get(Uri.parse("$baseUrl/questions/$questionId/choices"));
@@ -141,38 +132,27 @@ class QuizRepository {
       throw Exception("Authentication token not found. Please login again.");
     }
 
-    Map<String, List<int>> answersWithStringKeys = {};
-    userAnswers.forEach((key, value) {
-      answersWithStringKeys[key.toString()] = value;
-    });
+    // convert key int -> string
+    final Map<String, List<int>> answersWithStringKeys = {
+      for (final entry in userAnswers.entries) entry.key.toString(): entry.value
+    };
 
-    Map<String, dynamic> requestBody = {
+    final requestBody = {
       'userId': userId,
       'answers': answersWithStringKeys,
       'durationSeconds': durationSeconds,
     };
 
     final uri = Uri.parse("$baseUrl/$quizId/submit");
-    final jsonBody = jsonEncode(requestBody);
-
-    // 🔥 THÊM TOKEN VÀO HEADER
-    final headers = {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer $authToken",
-    };
-
-    print("📤 Sending request to: $uri");
-    print("🔑 With token: ${authToken.substring(0, 20)}...");
-    print("👤 User ID: $userId");
 
     final response = await http.post(
       uri,
-      headers: headers,
-      body: jsonBody,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $authToken",
+      },
+      body: jsonEncode(requestBody),
     );
-
-    print("📥 Response status: ${response.statusCode}");
-    print("📥 Response body: ${response.body}");
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -215,7 +195,7 @@ class QuizRepository {
     }
   }
 
-  /// 🔹 Lấy danh sách subject theo grade
+  /// Lấy danh sách subject theo grade
   Future<List<Map<String, dynamic>>> getSubjectsByGrade(int gradeId) async {
     final uri = Uri.parse("$baseUrl/grades/$gradeId/subjects");
     final response = await http.get(uri);
@@ -228,29 +208,38 @@ class QuizRepository {
     }
   }
 
+  /// ✅ FIX: dùng token từ SharedPreferences và http.get trực tiếp
   Future<Map<String, dynamic>> getBestScoreForUser(int quizId, int userId) async {
     final prefs = await SharedPreferences.getInstance();
     final authToken = prefs.getString('authToken');
 
-    final uri = Uri.parse("$baseUrl/$quizId/users/$userId/best-score");
+    final uri = Uri.parse('$baseUrl/$quizId/users/$userId/best-score');
+    final headers = {
+      'Accept': 'application/json',
+      if (authToken != null && authToken.isNotEmpty) 'Authorization': 'Bearer $authToken',
+    };
 
-    final response = await http.get(
-      uri,
-      headers: {
-        "Content-Type": "application/json",
-        if (authToken != null && authToken.isNotEmpty) "Authorization": "Bearer $authToken",
-      },
-    );
+    try {
+      final res = await http.get(uri, headers: headers).timeout(const Duration(seconds: 15));
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else if (response.statusCode == 404) {
-      // Trả về null nếu không có kết quả
+      if (res.statusCode == 200) {
+        if (res.body.trim().isEmpty) return {};
+        final jsonMap = jsonDecode(res.body);
+        return (jsonMap is Map<String, dynamic>) ? jsonMap : {};
+      }
+
+      // chưa có best score
+      if (res.statusCode == 404 || res.statusCode == 204) return {};
+
+      // các lỗi khác → không làm vỡ UI, trả {}
+      debugPrint('getBestScoreForUser HTTP ${res.statusCode}: ${res.reasonPhrase}');
       return {};
-    } else {
-      throw Exception("Failed to load best score. Status: ${response.statusCode}, Body: ${response.body}");
+    } catch (e) {
+      debugPrint('getBestScoreForUser error: $e');
+      return {};
     }
   }
+
   Future<QuizProgressModel> getQuizProgress({
     required int userId,
     int? gradeId,

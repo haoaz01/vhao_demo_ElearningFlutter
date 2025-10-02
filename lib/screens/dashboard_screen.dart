@@ -10,7 +10,10 @@ import '../repositories/user_activity_repository.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:async';
-
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../repositories/progress_repository.dart';
+import 'dart:convert';
 import 'streak_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -29,6 +32,8 @@ class _DashboardScreenState extends State<DashboardScreen>
   final QuizHistoryController quizHistoryController =
   Get.find<QuizHistoryController>();
   late final UserActivityController userActivityController;
+  double? _avgFromDb; // <-- AVG % đọc từ DB (users.avg_percentage)
+  bool _loadingAvg = false;
 
   final Map<String, String> subjectIcons = const {
     'Toán': 'assets/icon/toan.png',
@@ -71,6 +76,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       final userId = authController.userId.value;
       userActivityController.ensureAutoSessionStarted(userId);
       _loadProgressData();
+      _fetchAvgFromDb();
     });
 
     _scheduleMidnightRefresh();
@@ -103,6 +109,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     _midnightTimer = Timer(diff + const Duration(seconds: 1), () async {
       await userActivityController.persistSessionSnapshot(); // snapshot lần cuối
       await _loadProgressData();
+      await _fetchAvgFromDb();
       _scheduleMidnightRefresh(); // lên lịch lại cho ngày tiếp theo
     });
   }
@@ -111,6 +118,40 @@ class _DashboardScreenState extends State<DashboardScreen>
     await userActivityController.fetchStreakInfo(authController.userId.value);
     await userActivityController.fetchTodayInfo(authController.userId.value);
     await quizHistoryController.loadDailyStats(days: 7);
+  }
+
+  Future<void> _fetchAvgFromDb() async {
+    try {
+      setState(() => _loadingAvg = true);
+
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('authToken');
+      final userId = authController.userId.value;
+
+      final uri = Uri.parse(
+        '${ProgressRepository.host}/api/quizzes/user/$userId/statistics',
+      );
+
+      final res = await http.get(uri, headers: {
+        'Accept': 'application/json',
+        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      });
+
+      if (res.statusCode == 200 && res.body.isNotEmpty) {
+        final jsonMap = json.decode(res.body) as Map<String, dynamic>;
+        final val = jsonMap['avgPercentage'];
+        setState(() {
+          _avgFromDb = (val == null) ? null : (val as num).toDouble();
+        });
+      } else {
+        // không làm vỡ UI – để null là được (sẽ fallback)
+        setState(() => _avgFromDb = null);
+      }
+    } catch (_) {
+      setState(() => _avgFromDb = null);
+    } finally {
+      if (mounted) setState(() => _loadingAvg = false);
+    }
   }
 
   Color _getSubjectColor(String subjectName) {
@@ -423,8 +464,10 @@ class _DashboardScreenState extends State<DashboardScreen>
         actions: [
           IconButton(
             icon: Icon(Icons.refresh, size: 22.sp),
-            onPressed: () async => _loadProgressData(),
-            tooltip: 'Làm mới',
+            onPressed: () async {
+              await _loadProgressData();
+              await _fetchAvgFromDb();
+            },            tooltip: 'Làm mới',
           ),
         ],
       ),
@@ -475,7 +518,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                 SizedBox(height: 16.h),
 
                 // Quiz history
-                const _QuizHistoryFromApi(),
+                _QuizHistoryFromApi(
+                  avgFromDb: _avgFromDb,
+                  loadingAvg: _loadingAvg,
+                ),
                 SizedBox(height: 16.h),
 
                 // Tổng tiến độ
@@ -784,31 +830,31 @@ class _StreakCardNew extends StatelessWidget {
                   ),
                 ],
 
-                if (controller.isSessionActive) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.green[50],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.timer, size: 16, color: Colors.green[700]),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Đang học: ${controller.currentSessionMinutes} phút',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.green[700],
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                // if (controller.isSessionActive) ...[
+                //   const SizedBox(height: 8),
+                //   Container(
+                //     padding: const EdgeInsets.all(8),
+                //     decoration: BoxDecoration(
+                //       color: Colors.green[50],
+                //       borderRadius: BorderRadius.circular(8),
+                //     ),
+                //     child: Row(
+                //       mainAxisAlignment: MainAxisAlignment.center,
+                //       children: [
+                //         Icon(Icons.timer, size: 16, color: Colors.green[700]),
+                //         const SizedBox(width: 4),
+                //         Text(
+                //           'Đang học: ${controller.currentSessionMinutes} phút',
+                //           style: TextStyle(
+                //             fontSize: 12,
+                //             color: Colors.green[700],
+                //             fontWeight: FontWeight.bold,
+                //           ),
+                //         ),
+                //       ],
+                //     ),
+                //   ),
+                // ],
               ],
             );
           },
@@ -864,7 +910,15 @@ class _StreakStatChipNew extends StatelessWidget {
 }
 
 class _QuizHistoryFromApi extends StatelessWidget {
-  const _QuizHistoryFromApi({super.key});
+  // Giữ lại tham số cho khỏi phải sửa nơi gọi, nhưng không dùng nữa
+  final double? avgFromDb;
+  final bool loadingAvg;
+
+  const _QuizHistoryFromApi({
+    super.key,
+    this.avgFromDb,
+    this.loadingAvg = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -890,6 +944,7 @@ class _QuizHistoryFromApi extends StatelessWidget {
         );
       }
 
+      // Tính trung bình cộng như cũ: chỉ tính ngày có dữ liệu (totalSum > 0)
       final active = list.where((e) => e.totalSum > 0).toList();
       final avg = active.isEmpty
           ? 0.0
@@ -903,8 +958,7 @@ class _QuizHistoryFromApi extends StatelessWidget {
 
       return Card(
         elevation: 2,
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -915,11 +969,13 @@ class _QuizHistoryFromApi extends StatelessWidget {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
+
+              // 🔙 Hiển thị một dòng duy nhất như cũ
               Text(
                 'Điểm trung bình: ${avg.toStringAsFixed(0)}%',
-                style:
-                const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
               ),
+
               const SizedBox(height: 10),
               SizedBox(
                 height: 260,
@@ -941,15 +997,14 @@ class _QuizHistoryFromApi extends StatelessWidget {
                       enabled: true,
                       touchTooltipData: BarTouchTooltipData(
                         tooltipBorderRadius: BorderRadius.circular(6),
-                        getTooltipItem:
-                            (group, groupIndex, rod, rodIndex) {
-                          final pct =
-                          rod.toY.clamp(0, 100).toStringAsFixed(0);
+                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                          final pct = rod.toY.clamp(0, 100).toStringAsFixed(0);
                           return BarTooltipItem(
                             '$pct%',
                             const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white),
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           );
                         },
                       ),
@@ -969,24 +1024,30 @@ class _QuizHistoryFromApi extends StatelessWidget {
                       bottomTitles: AxisTitles(
                         sideTitles: SideTitles(
                           showTitles: true,
+                          reservedSize: 22, // thấp hơn
                           getTitlesWidget: (value, _) {
                             final idx = value.toInt();
-                            if (idx < 0 || idx >= days.length) {
-                              return const SizedBox.shrink();
-                            }
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 4.0),
-                              child: Text(
-                                DateFormat('dd/MM').format(days[idx]),
+                            if (idx < 0 || idx >= days.length) return const SizedBox.shrink();
+                            return SizedBox(
+                              width: 24, // ô hẹp lại
+                              child: Center(
+                                child: Text(
+                                  DateFormat('dd/MM').format(days[idx]),
+                                  style: const TextStyle(fontSize: 10), // nhỏ lại
+                                  overflow: TextOverflow.visible,
+                                  softWrap: false,
+                                ),
                               ),
                             );
                           },
                         ),
                       ),
                       rightTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false)),
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
                       topTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false)),
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
                     ),
                     gridData: FlGridData(
                       show: true,

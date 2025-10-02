@@ -267,25 +267,30 @@ class QuizController extends GetxController {
   }
 
   Future<void> fetchBestScoreForUser(int quizId, int userId) async {
+    final key = "$quizId-$userId";
     try {
       isBestScoreLoading.value = true;
 
       final data = await quizRepository.getBestScoreForUser(quizId, userId);
 
       if (data.isNotEmpty) {
-        bestScore["$quizId-$userId"] = data;
+        bestScore[key] = {
+          // đảm bảo kiểu số là double/int thuần
+          'bestScore': (data['bestScore'] as num?)?.toDouble() ?? 0.0,
+          'bestCorrectAnswers': (data['bestCorrectAnswers'] as num?)?.toInt() ?? 0,
+          'totalQuestions': (data['totalQuestions'] as num?)?.toInt() ?? 0,
+          'attemptNo': (data['attemptNo'] as num?)?.toInt() ?? 0,
+          'durationSeconds': (data['durationSeconds'] as num?)?.toInt() ?? 0,
+          'completedAt': data['completedAt'],
+          'passed': data['passed'] == true,
+        };
       } else {
-        bestScore.remove("$quizId-$userId");
+        bestScore.remove(key); // chưa có điểm cao nhất
       }
     } catch (e) {
-      print("❌ Error fetching best score: $e");
-      Get.snackbar(
-        "Lỗi",
-        "Không thể tải điểm cao nhất",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      // ❗ Đừng hiển thị SnackBar ở đây để tránh spam khi load nhiều quiz song song
+      debugPrint('fetchBestScoreForUser($quizId) failed: $e');
+      bestScore.remove(key);
     } finally {
       isBestScoreLoading.value = false;
     }

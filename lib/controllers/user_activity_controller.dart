@@ -1,9 +1,6 @@
 import 'dart:async';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:get/get.dart';
-import '../model/calendar_day_model.dart';
-import '../model/user_activity_dto_model.dart';
+
 import '../model/user_streak_response_model.dart';
 import '../model/streak_info_model.dart';
 import '../model/accumulate_session_response_model.dart';
@@ -17,19 +14,17 @@ class UserActivityController extends GetxController {
 
   UserActivityController({required this.repository});
 
-  // Dữ liệu streak cơ bản (cho dashboard)
-  StreakInfo? _streakInfo;
+  // ======= State chính =======
+  StreakInfo? _streakInfo;                  // Cho dashboard
   StreakInfo? get streakInfo => _streakInfo;
 
-  // Dữ liệu streak + calendar (cho màn hình lịch)
-  UserStreakResponse? _streakCalendar;
+  UserStreakResponse? _streakCalendar;      // Cho màn hình lịch
   UserStreakResponse? get streakCalendar => _streakCalendar;
 
-  // Thông tin hôm nay
-  TodayInfoResponse? _todayInfo;
+  TodayInfoResponse? _todayInfo;            // Thông tin hôm nay
   TodayInfoResponse? get todayInfo => _todayInfo;
 
-  // Trạng thái loading
+  bool _flushInProgress = false;  // tránh flush chồng lên nhau
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
@@ -42,27 +37,25 @@ class UserActivityController extends GetxController {
   String? _error;
   String? get error => _error;
 
-  // Session tracking
-  int _sessionAccruedMinutes = 0;
+  // ======= Session tracking =======
+  int _sessionAccruedMinutes = 0;                 // phút đã tích trong phiên hiện tại
   int get currentSessionMinutes =>
       _sessionAccruedMinutes + (_bufferedSeconds ~/ 60);
-  DateTime? _sessionStartTime;
+
+  DateTime? _sessionStartTime;                    // null = không có phiên
   bool get isSessionActive => _sessionStartTime != null;
 
-  Timer? _sessionTimer;
+  Timer? _tickTimer;                              // tick 1s
+  Timer? _safetyFlushTimer;                       // flush an toàn mỗi 2 phút
+  int _bufferedSeconds = 0;                       // số giây đang đệm (chưa gửi)
 
-  Timer? _tickTimer;             // NEW: tick theo giây
-  int _bufferedSeconds = 0;      // NEW: số giây chưa gửi
-
-  // NEW: progress theo giây (0..1) cho progress bar 15p
+  // Progress 0..1 để vẽ progress 15 phút theo giây
   double get todayProgressSeconds {
-        final totalSecs = (todayTotalMinutes * 60) + _bufferedSeconds;
-        return (totalSecs / (15 * 60)).clamp(0.0, 1.0);
-      }
+    final totalSecs = (todayTotalMinutes * 60) + _bufferedSeconds;
+    return (totalSecs / (15 * 60)).clamp(0.0, 1.0);
+  }
 
-  // ========== CÁC PHƯƠNG THỨC CHÍNH ==========
-
-  // Refresh toàn bộ dữ liệu
+  // ======= Refresh helpers =======
   Future<void> refreshData(int userId) async {
     await Future.wait([
       fetchStreakInfo(userId),
@@ -70,7 +63,6 @@ class UserActivityController extends GetxController {
     ]);
   }
 
-  // Force refresh (clear cache)
   Future<void> forceRefresh(int userId) async {
     _streakInfo = null;
     _streakCalendar = null;
@@ -79,31 +71,28 @@ class UserActivityController extends GetxController {
     await refreshData(userId);
   }
 
-  // ========== API CALLS ==========
-
-  // Lấy thông tin streak cơ bản (nhanh, cho dashboard)
+  // ======= API calls =======
   Future<void> fetchStreakInfo(int userId) async {
     _isLoading = true;
     _error = null;
     update();
 
     try {
-      final connectionTest = await repository.testConnectionDetailed();
-      if (!connectionTest['connected']) {
-        _error = 'Không thể kết nối: ${connectionTest['error'] ?? connectionTest['message']}';
+      final conn = await repository.testConnectionDetailed();
+      if (conn['connected'] != true) {
+        _error = 'Không thể kết nối: ${conn['error'] ?? conn['message']}';
         _streakInfo = null;
         return;
       }
 
       _streakInfo = await repository.getStreakInfo(userId);
-
       if (_streakInfo == null) {
         _error = 'Dữ liệu streak rỗng từ server';
       }
     } catch (e, st) {
-      print('❌ fetchStreakInfo error: $e');
-      print(st);
-      _error = 'Lỗi khi lấy thông tin streak: ${e.toString()}';
+      // ignore: avoid_print
+      print('❌ fetchStreakInfo error: $e\n$st');
+      _error = 'Lỗi khi lấy thông tin streak: $e';
       _streakInfo = null;
     } finally {
       _isLoading = false;
@@ -111,29 +100,29 @@ class UserActivityController extends GetxController {
     }
   }
 
-  // Lấy thông tin streak + calendar (đầy đủ, cho màn hình lịch)
   Future<void> fetchStreakCalendar(int userId, {int months = 3}) async {
     _isLoadingCalendar = true;
     _error = null;
     update();
 
     try {
-      final connectionTest = await repository.testConnectionDetailed();
-      if (!connectionTest['connected']) {
-        _error = 'Không thể kết nối: ${connectionTest['error'] ?? connectionTest['message']}';
+      final conn = await repository.testConnectionDetailed();
+      if (conn['connected'] != true) {
+        _error = 'Không thể kết nối: ${conn['error'] ?? conn['message']}';
         _streakCalendar = null;
         return;
       }
 
-      _streakCalendar = await repository.getUserStreakAndCalendar(userId, months: months);
+      _streakCalendar =
+      await repository.getUserStreakAndCalendar(userId, months: months);
 
       if (_streakCalendar == null) {
         _error = 'Dữ liệu calendar rỗng từ server';
       }
     } catch (e, st) {
-      print('❌ fetchStreakCalendar error: $e');
-      print(st);
-      _error = 'Lỗi khi lấy dữ liệu lịch: ${e.toString()}';
+      // ignore: avoid_print
+      print('❌ fetchStreakCalendar error: $e\n$st');
+      _error = 'Lỗi khi lấy dữ liệu lịch: $e';
       _streakCalendar = null;
     } finally {
       _isLoadingCalendar = false;
@@ -141,34 +130,44 @@ class UserActivityController extends GetxController {
     }
   }
 
-  // Lấy thông tin hôm nay
   Future<void> fetchTodayInfo(int userId) async {
     try {
       _todayInfo = await repository.getTodayInfo(userId);
       update();
     } catch (e) {
+      // ignore: avoid_print
       print('❌ fetchTodayInfo error: $e');
-      // Không set error vì đây không phải operation chính
     }
   }
-
-  // ========== SESSION MANAGEMENT ==========
-
-  // Cộng dồn session time (PHƯƠNG THỨC CHÍNH THAY THẾ recordActivity)
+  Future<void> resetSessionForNewUser() async {
+    _sessionStartTime = null;
+    _sessionAccruedMinutes = 0;
+    _bufferedSeconds = 0;
+    await _store.clear();
+    _todayInfo = null;
+    _streakInfo = null;
+    _streakCalendar = null;
+    update();
+  }
+  // ======= Session management =======
+  /// Cộng dồn thời gian học (thay thế recordActivity)
   Future<AccumulateSessionResponse?> accumulateSessionTime({
     required int userId,
     required int sessionMinutes,
   }) async {
     try {
+      // Gửi ngày theo local (date-only) để backend không lệch múi giờ
+      final now = DateTime.now();
+      final activityDate = DateTime(now.year, now.month, now.day);
+      print("➡️ accumulateSessionTime(user=$userId, +$sessionMinutes', date=$activityDate)");
       final response = await repository.accumulateSessionTime(
         userId: userId,
-        activityDate: DateTime.now(),
+        activityDate: activityDate,
         sessionMinutes: sessionMinutes,
       );
-
+      print("⬅️ server newTotal=${response.newTotalMinutes}, isStudied=${response.isStudiedDay}, statusChanged=${response.statusChanged}");
       if (response.success) {
-
-        // Cập nhật dữ liệu local ngay lập tức
+        // Cập nhật local (TodayInfo)
         if (_todayInfo != null) {
           _todayInfo = TodayInfoResponse(
             success: true,
@@ -180,6 +179,7 @@ class UserActivityController extends GetxController {
           );
         }
 
+        // Cập nhật local (StreakInfo)
         if (_streakInfo != null) {
           _streakInfo = StreakInfo(
             success: true,
@@ -192,66 +192,83 @@ class UserActivityController extends GetxController {
           );
         }
 
-        // Thông báo nếu vừa đạt mục tiêu
+        // Nếu vừa đạt mốc, refresh để tô lịch ngay
         if (response.statusChanged && response.isStudiedDay) {
           _showAchievementNotification();
-          fetchTodayInfo(userId);
-          fetchStreakInfo(userId);
-          fetchStreakCalendar(userId); // để lịch tô màu ngay
+          await Future.wait([
+            fetchTodayInfo(userId),
+            fetchStreakInfo(userId),
+            fetchStreakCalendar(userId),
+          ]);
         }
-        update();
-        //check
-        return response; // ĐÃ SỬA: Trả về response thay vì AccumulateSessionResponse
 
+        update();
+        return response;
       } else {
         _error = 'Lỗi từ server: ${response.message}';
         update();
-        return response; // FIX: trả về response đúng
+        return response;
       }
     } catch (e) {
+      // ignore: avoid_print
       print('❌ accumulateSessionTime error: $e');
-      _error = 'Lỗi cộng dồn thời gian học: ${e.toString()}';
+      _error = 'Lỗi cộng dồn thời gian học: $e';
       update();
       return null;
     }
   }
 
-  // NEW: đảm bảo auto-session luôn bật khi user vào app/màn
+  /// Đảm bảo auto-session bật khi user vào app/màn
   Future<void> ensureAutoSessionStarted(int userId) async {
     final restored = await _store.loadIfSameDay();
+
     if (_sessionStartTime == null) {
       _sessionStartTime = restored?.sessionStartTime ?? DateTime.now();
       _bufferedSeconds = restored?.bufferedSeconds ?? 0;
-      _sessionAccruedMinutes = restored?.sessionAccruedMinutes ?? 0; // NEW
+      _sessionAccruedMinutes = restored?.sessionAccruedMinutes ?? 0;
+
+      // ✅ Bù thời gian trôi khi app ở background
+      final elapsedSinceStart =
+          DateTime.now().difference(_sessionStartTime!).inSeconds;
+      final alreadyCounted = _sessionAccruedMinutes * 60 + _bufferedSeconds;
+      final delta = elapsedSinceStart - alreadyCounted;
+      if (delta > 0) {
+        _bufferedSeconds += delta;
+
+        // nếu đủ phút, flush ngay
+        final m = _bufferedSeconds ~/ 60;
+        if (m > 0) {
+          _bufferedSeconds = _bufferedSeconds % 60;
+          _sessionAccruedMinutes += m;
+          await accumulateSessionTime(userId: userId, sessionMinutes: m);
+        }
+
+        await _store.save(
+          sessionStartTime: _sessionStartTime,
+          bufferedSeconds: _bufferedSeconds,
+          sessionAccruedMinutes: _sessionAccruedMinutes,
+        );
+      }
     }
+
     _startTickTimer(userId);
     update();
   }
 
+  /// Khởi động timers: tick 1s + safety flush 2 phút
   void _startTickTimer(int userId) {
+    // Hủy timers cũ trước khi tạo mới
     _tickTimer?.cancel();
+    _safetyFlushTimer?.cancel();
+
+    // Tick 1 giây – tăng buffer, đủ 60s thì flush 1 phút
     _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
       if (_sessionStartTime == null) return;
 
       _bufferedSeconds += 1;
 
-      // Lưu snapshot mỗi 5s
+      // Snapshot mỗi 5s
       if (_bufferedSeconds % 5 == 0) {
-        await _store.save(
-          sessionStartTime: _sessionStartTime,
-          bufferedSeconds: _bufferedSeconds,
-          sessionAccruedMinutes: _sessionAccruedMinutes, // NEW
-        );
-      }
-
-      // Đủ 60s -> flush
-      if (_bufferedSeconds >= 60) {
-        final m = _bufferedSeconds ~/ 60;
-        _bufferedSeconds = _bufferedSeconds % 60;
-        _sessionAccruedMinutes += m; // NEW: cộng vào phiên hiện tại
-        await accumulateSessionTime(userId: userId, sessionMinutes: m);
-
-        // lưu lại ngay sau khi flush
         await _store.save(
           sessionStartTime: _sessionStartTime,
           bufferedSeconds: _bufferedSeconds,
@@ -259,11 +276,61 @@ class UserActivityController extends GetxController {
         );
       }
 
-      update(); // để progress chạy mượt theo giây
+      // Đủ 60s -> flush
+      if (_bufferedSeconds >= 60 && !_flushInProgress) {
+        final m = _bufferedSeconds ~/ 60;
+        _bufferedSeconds = _bufferedSeconds % 60;
+        _sessionAccruedMinutes += m;
+
+        _flushInProgress = true;
+        try {
+          // ⏱ LOG CHÍNH: xem flush bao nhiêu phút & tổng đã tích
+          print("⏱ [tick] Flush $m phút cho user $userId | Accrued=$_sessionAccruedMinutes");
+          await accumulateSessionTime(userId: userId, sessionMinutes: m);
+
+          await _store.save(
+            sessionStartTime: _sessionStartTime,
+            bufferedSeconds: _bufferedSeconds,
+            sessionAccruedMinutes: _sessionAccruedMinutes,
+          );
+        } finally {
+          _flushInProgress = false;
+        }
+      }
+
+      update();
+    });
+
+    // Safety flush 2 phút/lần – nếu đã tích >= 60s mà chưa flush thì flush
+    _safetyFlushTimer = Timer.periodic(const Duration(minutes: 2), (_) async {
+      if (_sessionStartTime == null) return;
+
+      final m = _bufferedSeconds ~/ 60;
+      if (m > 0 && !_flushInProgress) {
+        _bufferedSeconds = _bufferedSeconds % 60;
+        _sessionAccruedMinutes += m;
+
+        _flushInProgress = true;
+        try {
+          // ⏱ LOG CHÍNH: safety flush
+          print("⏱ [safety] Flush $m phút cho user $userId | Accrued=$_sessionAccruedMinutes");
+          await accumulateSessionTime(userId: userId, sessionMinutes: m);
+
+          await _store.save(
+            sessionStartTime: _sessionStartTime,
+            bufferedSeconds: _bufferedSeconds,
+            sessionAccruedMinutes: _sessionAccruedMinutes,
+          );
+        } finally {
+          _flushInProgress = false;
+        }
+
+        update();
+      }
     });
   }
 
-  // Kết thúc (flush phần phút còn lại nếu >=60s)
+  /// Kết thúc phiên (flush phần phút còn lại nếu có)
   Future<void> endStudySession(int userId) async {
     await _store.save(
       sessionStartTime: _sessionStartTime,
@@ -272,92 +339,75 @@ class UserActivityController extends GetxController {
     );
 
     _tickTimer?.cancel();
+    _safetyFlushTimer?.cancel();
     _tickTimer = null;
+    _safetyFlushTimer = null;
 
     final m = _bufferedSeconds ~/ 60;
     if (m > 0) {
       _bufferedSeconds = _bufferedSeconds % 60;
-      _sessionAccruedMinutes += m; // NEW
+      _sessionAccruedMinutes += m;
       await accumulateSessionTime(userId: userId, sessionMinutes: m);
     }
 
     _sessionStartTime = null;
-    _sessionAccruedMinutes = 0; // NEW: reset
+    _sessionAccruedMinutes = 0;
     _bufferedSeconds = 0;
     await _store.clear();
     update();
   }
+
+  /// Lưu snapshot thủ công (khi app vào background, v.v.)
   Future<void> persistSessionSnapshot() async {
     await _store.save(
       sessionStartTime: _sessionStartTime,
       bufferedSeconds: _bufferedSeconds,
-      sessionAccruedMinutes: _sessionAccruedMinutes, // <- KHÔNG để null
+      sessionAccruedMinutes: _sessionAccruedMinutes,
     );
   }
 
-  // Tự động gửi cập nhật session (cho session dài)
-  Future<void> _autoSendSessionUpdate() async {
-    // Có thể thêm logic gửi cập nhật tự động ở đây
-    // để tránh mất dữ liệu nếu app bị đóng đột ngột
-    print('🔄 Auto session update: $currentSessionMinutes phút');
-  }
-
-  // ========== HELPER METHODS ==========
-
-  // Kiểm tra xem hôm nay đã đạt mục tiêu chưa
+  // ======= Helpers =======
   bool get isTodayTargetAchieved {
     return _todayInfo?.isStudiedDay == true ||
         _streakInfo?.isTargetAchieved == true;
   }
 
-  // Lấy số phút còn lại để đạt mục tiêu
   int get remainingMinutes {
     return _todayInfo?.remainingMinutes ??
         _streakInfo?.remainingMinutes ??
         (15 - (_todayInfo?.totalMinutes ?? 0));
   }
 
-  // Lấy tổng số phút học hôm nay
   int get todayTotalMinutes {
-    return _todayInfo?.totalMinutes ??
-        _streakInfo?.todayMinutes ??
-        0;
+    return _todayInfo?.totalMinutes ?? _streakInfo?.todayMinutes ?? 0;
+    // (local bufferedSeconds chỉ để hiển thị progress mượt, không cộng vào con số phút này)
   }
 
-  // Lấy current streak
   int get currentStreak {
-    return _streakInfo?.currentStreak ??
-        _streakCalendar?.currentStreak ??
-        0;
+    return _streakInfo?.currentStreak ?? _streakCalendar?.currentStreak ?? 0;
   }
 
-  // Thông báo thành tích
   void _showAchievementNotification() {
-    // Có thể sử dụng Get.snackbar hoặc custom notification
     Get.snackbar(
       '🎉 Chúc mừng!',
       'Bạn đã hoàn thành mục tiêu 15 phút học tập hôm nay!',
       duration: const Duration(seconds: 5),
       snackPosition: SnackPosition.TOP,
     );
-
-    // Hoặc trigger event cho UI
     update();
   }
 
-  // Xóa lỗi
   void clearError() {
     _error = null;
     update();
   }
 
-  // Kiểm tra kết nối
   Future<void> checkConnection() async {
     try {
       final result = await repository.testConnectionDetailed();
       _isConnected = result['connected'] == true;
       update();
-    } catch (e) {
+    } catch (_) {
       _isConnected = false;
       update();
     }
@@ -365,19 +415,24 @@ class UserActivityController extends GetxController {
 
   @override
   void onClose() {
-    _sessionTimer?.cancel();
     _tickTimer?.cancel();
+    _safetyFlushTimer?.cancel();
     super.onClose();
   }
 
-  // ========== DEBUG METHODS ==========
-
+  // ======= Debug =======
   void printDebugInfo() {
+    // ignore: avoid_print
     print('=== DEBUG CONTROLLER STATE ===');
+    // ignore: avoid_print
     print('Streak Info: ${_streakInfo?.currentStreak} ngày');
+    // ignore: avoid_print
     print('Today Minutes: ${_todayInfo?.totalMinutes} phút');
+    // ignore: avoid_print
     print('Session Active: $isSessionActive ($currentSessionMinutes phút)');
+    // ignore: avoid_print
     print('Today Target Achieved: $isTodayTargetAchieved');
+    // ignore: avoid_print
     print('=============================');
   }
 }

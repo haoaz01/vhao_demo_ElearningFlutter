@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:http/http.dart';
 import '../controllers/auth_controller.dart';
+import '../controllers/auth_flow_controller.dart';
 import '../controllers/progress_controller.dart';
 import '../controllers/quiz_controller.dart';
 import '../controllers/quiz_history_controller.dart';
@@ -27,5 +28,7 @@ class AppBindings implements Bindings {
     Get.lazyPut<UserActivityController>(
             () => UserActivityController(repository: Get.find()),
         fenix: true,);
+    Get.put<AuthFlowController>(AuthFlowController(), permanent: true);
   }
+
 }
