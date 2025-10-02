@@ -32,8 +32,6 @@ class _DashboardScreenState extends State<DashboardScreen>
   final QuizHistoryController quizHistoryController =
   Get.find<QuizHistoryController>();
   late final UserActivityController userActivityController;
-  double? _avgFromDb; // <-- AVG % đọc từ DB (users.avg_percentage)
-  bool _loadingAvg = false;
 
   final Map<String, String> subjectIcons = const {
     'Toán': 'assets/icon/toan.png',
@@ -73,11 +71,10 @@ class _DashboardScreenState extends State<DashboardScreen>
 
     // Chạy sau frame đầu
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final userId = authController.userId.value;
-      userActivityController.ensureAutoSessionStarted(userId);
-      _loadProgressData();
-      _fetchAvgFromDb();
-    });
+          final userId = authController.userId.value;
+          userActivityController.ensureAutoSessionStarted(userId);
+          _loadProgressData();
+        });
 
     _scheduleMidnightRefresh();
   }
@@ -109,7 +106,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     _midnightTimer = Timer(diff + const Duration(seconds: 1), () async {
       await userActivityController.persistSessionSnapshot(); // snapshot lần cuối
       await _loadProgressData();
-      await _fetchAvgFromDb();
       _scheduleMidnightRefresh(); // lên lịch lại cho ngày tiếp theo
     });
   }
@@ -123,40 +119,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
     await quizHistoryController.loadDailyStats(days: 7);
 
-  }
-
-  Future<void> _fetchAvgFromDb() async {
-    try {
-      setState(() => _loadingAvg = true);
-
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('authToken');
-      final userId = authController.userId.value;
-
-      final uri = Uri.parse(
-        '${ProgressRepository.host}/api/quizzes/user/$userId/statistics',
-      );
-
-      final res = await http.get(uri, headers: {
-        'Accept': 'application/json',
-        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
-      });
-
-      if (res.statusCode == 200 && res.body.isNotEmpty) {
-        final jsonMap = json.decode(res.body) as Map<String, dynamic>;
-        final val = jsonMap['avgPercentage'];
-        setState(() {
-          _avgFromDb = (val == null) ? null : (val as num).toDouble();
-        });
-      } else {
-        // không làm vỡ UI – để null là được (sẽ fallback)
-        setState(() => _avgFromDb = null);
-      }
-    } catch (_) {
-      setState(() => _avgFromDb = null);
-    } finally {
-      if (mounted) setState(() => _loadingAvg = false);
-    }
   }
 
   Future<void> _testApiConnection() async {
@@ -479,7 +441,6 @@ class _DashboardScreenState extends State<DashboardScreen>
             icon: Icon(Icons.refresh, size: 22.sp),
             onPressed: () async {
               await _loadProgressData();
-              await _fetchAvgFromDb();
             },            tooltip: 'Làm mới',
           ),
         ],
@@ -531,10 +492,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 SizedBox(height: 16.h),
 
                 // Quiz history
-                _QuizHistoryFromApi(
-                  avgFromDb: _avgFromDb,
-                  loadingAvg: _loadingAvg,
-                ),
+                const _QuizHistoryFromApi(),
                 SizedBox(height: 16.h),
 
                 // Tổng tiến độ
@@ -908,14 +866,8 @@ class _StreakStatChipNew extends StatelessWidget {
 
 class _QuizHistoryFromApi extends StatelessWidget {
   // Giữ lại tham số cho khỏi phải sửa nơi gọi, nhưng không dùng nữa
-  final double? avgFromDb;
-  final bool loadingAvg;
 
-  const _QuizHistoryFromApi({
-    super.key,
-    this.avgFromDb,
-    this.loadingAvg = false,
-  });
+  const _QuizHistoryFromApi({ super.key });
 
   @override
   Widget build(BuildContext context) {
